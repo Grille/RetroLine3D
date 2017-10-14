@@ -88,22 +88,10 @@ function simPlane(){
 
   
   ctx.strokeStyle="#0f0";
-    
-  // if (p[1]<0){
-  //   planePos[1]+=1;
-  //   planeSpeed[1]=0;
-  //   console.log("-----------------");
-  //   console.log(mp[1]);
-  //   console.log(coli[1]);
-  //   console.log(p[1]);
-  //   console.log(planePos[1]);
-  //   //planeRotSpeed = planeSpeed = [0,0,0];//-planeSpeed[1]/2
-  // }
-  // else{
+ 
   planeSpeed[1]-=9;
   for (let i = 0;i<3;i++){
     planeSpeed[i]*=0.99;
-    //planeRotSpeed[i]*=0.9;
     planePos[i] += planeSpeed[i]/100;
     planeRot[i] += planeRotSpeed[i]/100;
     if (planeRot[i]>=360)planeRot[i]-=360;
@@ -116,26 +104,23 @@ function simPlane(){
   for (let i = 0;i<coli.length/3;i++){
     let coliVec = [coli[i*3+0],coli[i*3+1],coli[i*3+2]]
     let p = transformVertex(coliVec,data.plane.massCenter,sin,cos,planePos);
+    ctx.beginPath()
     drawLine(mp,p)
+    ctx.stroke()
     if ((p[1])<0){
       flag+=1;
-      //planePos[1]+=1;
       planeSpeed[1]=-planeSpeed[1];
       planeSpeed[0]*=0.9;
       planeSpeed[2]*=0.9;
     
       addSpeed[1]+=Math.abs(planeSpeed[0]);
       addSpeed[1]+=Math.abs(planeSpeed[2]);
-      //console.log("------------");
       let vec = mp[0]-p[0]
       planeRotSpeed[2]-=vec*0.5+((planeSpeed[0]*1+1));
       planeRotSpeed[2]*=0.5;
-      //console.log(vec);
       vec = mp[2]-p[2]
       planeRotSpeed[0]+=vec*0.5+((planeSpeed[2]*1+1));
       planeRotSpeed[0]*=0.5;
-      // planeRotSpeed[1]+=(mp[2]-p[2])*0.1;
-      //console.log(vec);
     }
   }
   planeSpeed[1]+=addSpeed[1];
@@ -146,70 +131,33 @@ function simPlane(){
   if (k[81]===1) planeRotSpeed[2]+=4;
   if (k[69]===1) planeRotSpeed[2]-=4;
   
-
-//}
-
-
-
-  // if (k[87]===1){
-  //   let speed = 4;
-  //   if (k[16]===1)speed*=4;
-  //   //Y
-  //   let yv = camRot[0]/180;
-  //   if (yv > 1) yv =  1-(yv-1);
-  //   if (yv < 0.5) yv = 1-(1-yv*2);
-  //   else yv = 1-((yv-0.5)*2);
-  //   if (camRot[0]>180)yv =-yv;
-  //   if (k[38]===1) camPos[1]-=yv*speed;
-  //   else if (k[40]===1) camPos[1]+=yv*speed;
-  //   if (yv < 0) yv=-yv;yv = 1-yv;
-  //   // Z
-  //   let zv = camRot[1]/180;
-  //   if (zv > 1) zv =  1-(zv-1);
-  //   if (zv < 0.5) zv = 1-zv*2;
-  //   else zv = (1-zv-0.5)*2;
-  //   if (k[38]===1) camPos[2]-=(zv*speed)*yv;
-  //   else if (k[40]===1) camPos[2]+=(zv*speed)*yv;
-  //   if (k[39]===1) camPos[0]-=zv*speed;
-  //   else if (k[37]===1) camPos[0]+=zv*speed;
-  //   //X
-  //   let xv = camRot[1]/180;
-  //   if (xv > 1) xv =  1-(xv-1);
-  //   if (xv < 0.5) xv = 1-(1-xv*2);
-  //   else xv = 1-((xv-0.5)*2);
-  //   if (camRot[1]>180)xv =-xv;
-  //   if (k[38]===1) camPos[0]-=(xv*speed)*yv;
-  //   else if (k[40]===1) camPos[0]+=(xv*speed)*yv;
-  //   if (k[39]===1) camPos[2]+=xv*speed;
-  //   else if (k[37]===1) camPos[2]-=xv*speed;
-  // }
   
 }
 function render(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   
     ctx.strokeStyle="#121";
+    ctx.beginPath()
     let size = 40000
     for (let i = -size;i<size;i+=1000) {
       drawLine([i,0,-size],[i,0,size]);
-    }
-    for (let i = -size;i<size;i+=1000) {
       drawLine([-size,0,i],[size,0,i]);
     }
-  
+    ctx.stroke()
     ctx.strokeStyle="#454";
+    ctx.beginPath()
     for (let i = -size;i<size;i+=10000) {
       drawLine([i,0,-size],[i,0,size]);
-    }
-    for (let i = -size;i<size;i+=10000) {
       drawLine([-size,0,i],[size,0,i]);
     }
-  
+
     drawLine([0,0,-size],[0,0,size]);
     //drawLine([0,-size,0],[0,size,0]);
     drawLine([-size,0,0],[size,0,0]);
   
+    ctx.stroke()
     ctx.strokeStyle="#cfc";
+    ctx.beginPath()
   
     drawObject(data.cube,[0,0,0],[angle*2,angle,0],[0,0,0]);
   
@@ -252,7 +200,7 @@ function render(){
     drawObject(data.tree,[0,0,0],[0,0,0],[-30650,0,-2340]);
   
     drawObject(data.plane,data.plane.massCenter,planeRot,planePos);
-  
+    ctx.stroke()
     //drawObject(model,[0,0,0],[-angle,-angle*2,-angle*0.5],[0,0,0]);
     //drawPath(ship);
     
