@@ -1,7 +1,7 @@
 "use strict";
 
 let g = 9;
-let planePos = [-200,1000,-1270];
+let planePos = [-200,100,-1270];
 let planeRot = [0,-25,0];
 let planeRotSpeed = [0,0,0];
 let planeSpeed = [0,0,0];
@@ -76,63 +76,6 @@ function updateCam(){
 
 
 }
-function simPlane(){
-
-  let sin = [],cos = [];
-  sin[0] = Math.sin(planeRot[0] * 3.14159265 / 180), cos[0] = Math.cos(planeRot[0] * 3.14159265 / 180);
-  sin[1] = Math.sin(planeRot[1] * 3.14159265 / 180), cos[1] = Math.cos(planeRot[1] * 3.14159265 / 180);
-  sin[2] = Math.sin(planeRot[2] * 3.14159265 / 180), cos[2] = Math.cos(planeRot[2] * 3.14159265 / 180);
-
-  let coli = data.plane.coli
-  let mp = transformVertex(data.plane.massCenter,data.plane.massCenter,sin,cos,planePos);
-
-  
-  ctx.strokeStyle="#0f0";
- 
-  planeSpeed[1]-=9;
-  for (let i = 0;i<3;i++){
-    planeSpeed[i]*=0.99;
-    planePos[i] += planeSpeed[i]/100;
-    planeRot[i] += planeRotSpeed[i]/100;
-    if (planeRot[i]>=360)planeRot[i]-=360;
-    if (planeRot[i]<0)planeRot[i]+=360;
-
-  }
-
-  let flag = 0;
-  let addSpeed = [0,0,0];
-  for (let i = 0;i<coli.length/3;i++){
-    let coliVec = [coli[i*3+0],coli[i*3+1],coli[i*3+2]]
-    let p = transformVertex(coliVec,data.plane.massCenter,sin,cos,planePos);
-    ctx.beginPath()
-    drawLine(mp,p)
-    ctx.stroke()
-    if ((p[1])<0){
-      flag+=1;
-      planeSpeed[1]=-planeSpeed[1];
-      planeSpeed[0]*=0.9;
-      planeSpeed[2]*=0.9;
-    
-      addSpeed[1]+=Math.abs(planeSpeed[0]);
-      addSpeed[1]+=Math.abs(planeSpeed[2]);
-      let vec = mp[0]-p[0]
-      planeRotSpeed[2]-=vec*0.5+((planeSpeed[0]*1+1));
-      planeRotSpeed[2]*=0.5;
-      vec = mp[2]-p[2]
-      planeRotSpeed[0]+=vec*0.5+((planeSpeed[2]*1+1));
-      planeRotSpeed[0]*=0.5;
-    }
-  }
-  planeSpeed[1]+=addSpeed[1];
-  planePos[1]+=flag;
-
-  if (k[87]===1) planeSpeed[0]+=40;
-
-  if (k[81]===1) planeRotSpeed[2]+=4;
-  if (k[69]===1) planeRotSpeed[2]-=4;
-  
-  
-}
 function render(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   
@@ -199,16 +142,9 @@ function render(){
     drawObject(data.tree,[0,0,0],[0,0,0],[-12030,0,27000]);
     drawObject(data.tree,[0,0,0],[0,0,0],[-30650,0,-2340]);
   
-    drawObject(data.plane,data.plane.massCenter,planeRot,planePos);
-    ctx.stroke()
-    //drawObject(model,[0,0,0],[-angle,-angle*2,-angle*0.5],[0,0,0]);
-    //drawPath(ship);
+    drawObject(data.plane,[0,0,0],[-2,-25,0],[-200,-50,-1270]);
     
-    // drawLine([50,0,-100],[0,0,300]);
-    // drawLine([-50,0,-100],[0,0,300]);
-    // drawLine([0,50,-100],[0,0,300]);
-    // drawLine([0,-50,-100],[0,0,300]);
-  
+    ctx.stroke()
   
     ctxGui.clearRect(0,0,canvasGui.width,canvasGui.height);
     canvasGui.style.imageRendering = "pixelated";
@@ -226,7 +162,6 @@ function main(){
   timerRender+=time;
   while (timerSim > 10){
     timerSim-=10;
-    simPlane();
     updateCam();
     angle+=0.5;
   }
