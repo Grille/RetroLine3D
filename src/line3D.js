@@ -1,12 +1,6 @@
 
 "use strict";
 
-class Vec2 {
-  constructor(p1, p2, p3) {
-    this.x = p1;
-    this.y = p2;
-  }
-}
 class Vec3 {
   constructor(p1 = 0, p2 = 0, p3 = 0) {
     if (typeof p1 == 'object') {
@@ -20,54 +14,6 @@ class Vec3 {
       this.z = p3;
     }
   }
-  add(p1, p2, p3) {
-    if (typeof p1 == 'object') {
-      this.x += p1.x;
-      this.y += p1.y;
-      this.z += p1.z;
-    }
-    else {
-      this.x += p1;
-      this.y += p2;
-      this.z += p3;
-    }
-  }
-  sub(p1, p2, p3) {
-    if (typeof p1 == 'object') {
-      this.x -= p1.x;
-      this.y -= p1.y;
-      this.z -= p1.z;
-    }
-    else {
-      this.x -= p1;
-      this.y -= p2;
-      this.z -= p3;
-    }
-  }
-  mul(p1, p2, p3) {
-    if (typeof p1 == 'object') {
-      this.x *= p1.x;
-      this.y *= p1.y;
-      this.z *= p1.z;
-    }
-    else {
-      this.x *= p1;
-      this.y *= p2;
-      this.z *= p3;
-    }
-  }
-  div(p1, p2, p3) {
-    if (typeof p1 == 'object') {
-      this.x /= p1.x;
-      this.y /= p1.y;
-      this.z /= p1.z;
-    }
-    else {
-      this.x /= p1;
-      this.y /= p2;
-      this.z /= p3;
-    }
-  }
 }
 
 class WireframeRender {
@@ -76,11 +22,9 @@ class WireframeRender {
     this.dstCanvas = ctx.canvas;
     this.resolutionFactor = 1;
 
+    this.color = { r: 0, g: 255, b: 0 };
     this.canvas = document.createElement('canvas');
-    this.ctx = this.canvas.getContext('2d', { alpha: false });
-
-    this.setSize(this.dstCanvas.width, this.dstCanvas.height);
-    this.setViewport(0, 0, this.width, this.height);
+    this.ctx = this.canvas.getContext('2d');
 
     this.ctx.lineWidth = 1 / this.resolutionFactor;
     this.ctx.imageSmoothingEnabled = false;
@@ -91,22 +35,20 @@ class WireframeRender {
     this.camSin = new Vec3(0, 0, 0);
     this.camCos = new Vec3(0, 0, 0);
 
-    this.depthBuffer = new Uint8Array(0);
-    this.colorBuffer = new Uint8Array(0);
+    this.depthBuffer = new Float32Array(0);
+    this.colorBuffer = new Uint8ClampedArray(0);
+
+    this.setSize(this.dstCanvas.width, this.dstCanvas.height);
+    this.setViewport(0, 0, this.width, this.height);
 
   }
   //region private
   //resize canvas and use resolution
   setSize(width, height) {
-    /*
-    this.canvas.style.width = "" + window.innerWidth + "px";
-    this.canvas.style.height = "" + window.innerHeight + "px";
-    this.canvas.style.imageRendering = "pixelated";
-    this.canvas.width = (window.innerWidth / this.resolutionFactor) | 0;
-    this.canvas.height = (window.innerHeight / this.resolutionFactor) | 0;
-    */
-    this.depthBuffer = new Uint8Array(width * height);
-    this.colorBuffer = new Uint8Array(width * height * 3);
+    width |= 0; height |= 0;
+
+    this.depthBuffer = new Float32Array(width * height);
+    this.colorBuffer = new Uint8ClampedArray(width * height * 4);
 
     this.canvas.width = width;
     this.canvas.height = height;
@@ -129,7 +71,7 @@ class WireframeRender {
     let p = new Vec3(point3D)
     let b1, b2;
 
-    p.sub(center);
+    p.x -= center.x; p.y -= center.y; p.z -= center.z;
     // X
     b1 = p.y; b2 = p.z;
     p.y = b1 * cos.x - b2 * sin.x;
@@ -172,73 +114,81 @@ class WireframeRender {
     return p;
   }
   //projection matrix, transform vertex into 2d point
-  projectPoint(point3D, refPoint3D) {
+
+  projectPoints(inPoint1, inPoint2) {
 
     let min = -this.screenDist;
     let c = min;
     min *= 0.9;
 
-    let p = this.transformCamPoint(point3D);
-    p.z += min;
+    let point1 = this.transformCamPoint(inPoint1);
+    let point2 = this.transformCamPoint(inPoint2);
 
-    let distZ, distX, distY;
-    let m;
-    let out = 0;
+    point1.z += min;
+    point2.z += min;
+    
+    let distZX1 = Math.sqrt(point1.z * point1.z + point1.x * point1.x);
+    let dist1 = Math.sqrt(distZX1 * distZX1 + point1.y * point1.y);
 
-    if (p.z < min) {
-
-      let rp = this.transformCamPoint(refPoint3D);
-      rp.z += min;
-
-      if (rp.z < min) return [0, 0, 1];
-
-      distZ = p.z - rp.z;
-      distX = p.x - rp.x;
-      distY = p.y - rp.y;
-
-      p.z = min;
-
-      m = distX / distZ;
-      p.x = rp.x + m * (p.z - rp.z);
-
-      m = distY / distZ;
-      p.y = rp.y + m * (p.z - rp.z);
+    let distZX2 = Math.sqrt(point2.z * point2.z + point2.x * point2.x);
+    let dist2 = Math.sqrt(distZX2 * distZX2 + point2.y * point2.y);
 
 
-      out = 1;
+    if (point1.z < min && point2.z < min) return {
+      point1: new Vec3(0, 0, 0),
+      point2: new Vec3(0, 0, 0),
     }
+    let distZ = point1.z - point2.z;
+    let distX = point1.x - point2.x;
+    let distY = point1.y - point2.y;
 
+    let m;
 
-
-    distZ = c - p.z;
-    distX = -p.x;
-    distY = -p.y;
-
-    // get X
-    m = distX / distZ;
-    let x = m * (0 + c);
-
-    // get Y
-    m = distY / distZ;
-    let y = m * (0 + c);
-
+    let { width, height } = this;
     let hwidth = this.width / 2, hheight = this.height / 2;
 
-    //m = distX / distY;
-    //if (x < -hwidth) x = m*-hwidth+x;
-
-    let point2D = new Vec3((-x + hwidth), (y + hheight), p.z);
-
-    /*
-    {
-      if (point2D.y < 0) point2D.y = 0;
-      if (point2D.y > this.height) point2D.y = this.height;
+    function clampZ(point1, point2) {
+      if (point1.z < min) {
+        point1.z = min;
+  
+        m = distX / distZ;
+        point1.x = point2.x + m * (point1.z - point2.z);
+  
+        m = distY / distZ;
+        point1.y = point2.y + m * (point1.z - point2.z);
+      }
     }
-    */
 
-    if (point2D.x > 0) out = 1;
+    clampZ(point1, point2);
+    clampZ(point2, point1);
 
-    return point2D;
+    let z1 = c - point1.z;
+
+    // get X
+    m = -point1.x / z1;
+    let x1 = m * (0 + c);
+
+    // get Y
+    m = -point1.y / z1;
+    let y1 = m * (0 + c);
+
+    let z2 = c - point2.z;
+
+    // get X
+    m = -point2.x / z2;
+    let x2 = m * (0 + c);
+
+    // get Y
+    m = -point2.y / z2;
+    let y2 = m * (0 + c);
+
+    //m = distX / distY;
+    //if (x < -hwidth) x = m * -hwidth + x;
+
+    return {
+      point1: new Vec3((-x1 + hwidth), (y1 + hheight), dist1),
+      point2: new Vec3((-x2 + hwidth), (y2 + hheight), dist2),
+    }
   }
   //test whether object in sight and near enough
   objectVisible(location, model) {
@@ -249,16 +199,18 @@ class WireframeRender {
     min *= 0.9;
 
     let p = this.transformCamPoint(location);
-    p.z += size
-    if (p.z < -size) return false;
-    if (p.z > model.renderDist + size) return false;
+    let distZX = Math.sqrt(p.z * p.z + p.x * p.x);
+    let dist = Math.sqrt(distZX * distZX + p.y * p.y);
+    dist += size
+    if (dist < -size) return false;
+    if (dist > model.renderDist + size) return false;
 
-    p.z += min;
+    dist += min;
 
     let distZ, distX, distY, m;
     let out = 0;
 
-    distZ = c - p.z;
+    distZ = c - dist;
     let x, y;
 
     // test X
@@ -287,14 +239,8 @@ class WireframeRender {
 
     if (!this.objectVisible(translate, model)) return;
 
-    //let totalPos = transformCamPoint(translate);
-    // if (totalPos.z<0)return;
-    // if (totalPos.z>1000)return;
-
-    // totalPos = projectPoint(translate);
-    // if (totalPos.x<0)return;
-
     let sin = new Vec3(0, 0, 0); let cos = new Vec3(1, 1, 1);
+    
     if (rotate.x !== 0) {
       sin.x = Math.sin(rotate.x * 3.14159265 / 180);
       cos.x = Math.cos(rotate.x * 3.14159265 / 180);
@@ -346,47 +292,92 @@ class WireframeRender {
     return s + t * (e - s);
   }
   drawLine(start3D, end3D){
-    let start = this.projectPoint(start3D, end3D)
-    let end = this.projectPoint(end3D, start3D)
-    
-    if (start.x === end.x && start.y === end.y) return;
+    let { point1, point2 } = this.projectPoints(start3D, end3D);
 
-    /*
-    let dist = Math.max(Math.abs(start.x - end.x), Math.abs(start.y - end.y));
+    let { width, height } = this;
 
-    //console.log(dist);
-    
+    let distX = point1.x - point2.x;
+    let distY = point1.y - point2.y;
+    let distZ = point1.z - point2.z;
+
+    let m = 0;
+
+    function clamp(point1, point2) {
+      if (point1.x < 0) {
+        point1.x = 0;
+
+        m = distZ / distX;
+        point1.z = point2.z + m * (point1.x - point2.x);
+
+        m = distY / distX;
+        point1.y = point2.y + m * (point1.x - point2.x);
+      }
+      if (point1.x > width) {
+        point1.x = width;
+
+        m = distZ / distX;
+        point1.z = point2.z + m * (point1.x - point2.x);
+
+        m = distY / distX;
+        point1.y = point2.y + m * (point1.x - point2.x);
+      }
+      if (point1.y < 0) {
+        point1.y = 0;
+
+        m = distZ / distY;
+        point1.z = point2.z + m * (point1.y - point2.y);
+
+        m = distX / distY;
+        point1.x = point2.x + m * (point1.y - point2.y);
+      }
+      if (point1.y > height) {
+        point1.y = height;
+
+        m = distZ / distY;
+        point1.z = point2.z + m * (point1.y - point2.y);
+
+        m = distX / distY;
+        point1.x = point2.x + m * (point1.y - point2.y);
+      }
+    }
+    clamp(point1, point2);
+    clamp(point2, point1);
+
+
+    if (point1.x === point2.x && point1.y === point2.y) return;
+
+    let dist = Math.max(Math.abs(point1.x - point2.x), Math.abs(point1.y - point2.y))+1;
+
     for (let step = 0; step < dist; step++) {
       let t = step / dist;
-      let x = this.lerp(start.x, end.x, t);
-      let y = this.lerp(start.y, end.y, t);
-      let z = this.lerp(start.z, end.z, t);
-      let index = x + y * this.width;
+      let x = this.lerp(point1.x, point2.x, t);
+      let y = this.lerp(point1.y, point2.y, t);
+      let z = this.lerp(point1.z, point2.z, t);
+      let depth = z;
+      let index = (x|0) + (y|0) * this.width;
+      if (this.depthBuffer[index] > depth || this.depthBuffer[index] === 0) {
+        this.depthBuffer[index] = depth;
+        this.colorBuffer[index * 4 + 0] = this.color.r;
+        this.colorBuffer[index * 4 + 1] = this.color.g;
+        this.colorBuffer[index * 4 + 2] = this.color.b;
+      }
     }
-    */
-    this.ctx.moveTo(start.x | 0, start.y | 0);
-    this.ctx.lineTo(end.x | 0, end.y | 0);
   }
   
-  /*
-  drawLine(start3D, end3D) {
-    let tstart2D = this.projectPoint(start3D, end3D)
-    let tend2D = this.projectPoint(end3D, start3D)
-    //if (tstart2D.z === 1 && tend2D.z === 1) return;
-    this.ctx.moveTo(tstart2D.x | 0, tstart2D.y | 0);
-    this.ctx.lineTo(tend2D.x | 0, tend2D.y | 0);
-    //console.log(tstart2D,tend2D);
-  }
-  */
-
-  startScene(width, height) {
-    this.ctx.fillRect(0,0,this.canvas.width, this.canvas.height);
-    //this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    this.ctx.strokeStyle = "#fff";
-    this.ctx.beginPath();
+  startScene() {
+    let size = this.width * this.height;
+    for (let i = 0; i < size; i++) {
+      this.depthBuffer[i] = 0;
+      this.colorBuffer[i * 4 + 0] = 0;
+      this.colorBuffer[i * 4 + 1] = 0;
+      this.colorBuffer[i * 4 + 2] = 0;
+      this.colorBuffer[i * 4 + 3] = 255;
+    }
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
   endScene() {
-    this.ctx.stroke();
+    let data = new ImageData(this.colorBuffer, this.width, this.height);
+    this.ctx.putImageData(data, 0, 0);
     this.dstCtx.drawImage(this.canvas, 0, 0, this.canvas.width, this.canvas.height, this.viewport.x, this.viewport.y, this.viewport.width, this.viewport.height);
   }
 }

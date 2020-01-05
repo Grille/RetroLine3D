@@ -23,6 +23,8 @@ data = JSON.parse(request.responseText);
 let angle = 0;
 let lastMousePos = [0, 0];
 let k = []
+let resulution = 2;
+renderer.setSize(canvas.width / resulution, canvas.height / resulution);
 for (let i = 0; i < 256; i++)k[i] = 0;
 window.addEventListener("keydown", (e) => { k[e.keyCode] = 1; console.log(e.keyCode); });
 window.addEventListener("keyup", (e) => { k[e.keyCode] = 0 });
@@ -38,7 +40,7 @@ window.onresize = () => {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
   renderer.setViewport(0, 0, canvas.width, canvas.height);
-  renderer.setSize(canvas.width / 2, canvas.height / 2);
+  renderer.setSize(canvas.width / resulution, canvas.height / resulution);
 }
 
 function updateCam() {
@@ -95,70 +97,70 @@ function updateCam() {
 
 
 }
+let objects = [];
+for (let i = 0; i < 10000; i++) {
+  objects.push({
+    model: data.tree,
+    center: new Vec3(0, 0, 0),
+    rotation: new Vec3(Math.random() * 10, Math.random() * 360, Math.random() * 10),
+    location: new Vec3(Math.random() * 100000 - 50000, 0, Math.random() * 100000 - 50000),
+    color: { r: Math.random() * 50, g: Math.random() * 50 + 50, b: Math.random(50) },
+  })
+}
+for (let i = 0; i < 20; i++) {
+  objects.push({
+    model: data.house,
+    center: new Vec3(0, 0, 0),
+    rotation: new Vec3(0, Math.random() * 360, 0),
+    location: new Vec3(Math.random() * 100000 - 50000, 0, Math.random() * 100000 - 50000),
+    color: { r: Math.random() * 20 + 90, g: Math.random() * 20 + 90, b: Math.random() * 20 + 90 },
+  })
+}
 function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   renderer.startScene(); {
 
-    let size = 40000
-    for (let i = -size; i < size; i += 1000) {
-      renderer.drawLine(new Vec3(i, 0, -size), new Vec3(i, 0, size));
-      renderer.drawLine(new Vec3(-size, 0, i), new Vec3(size, 0, i));
+    
+    let size = 100000
+    
+    for (let i = -size; i <= size; i += 1000) {
+      if (i % 10000 === 0)
+        renderer.color = { r: 25, g: 75, b: 0 };
+      else
+        renderer.color = { r: 10, g: 25, b: 0 };
+      renderer.drawLine(new Vec3(i, -1, -size), new Vec3(i, -1, size));
+      renderer.drawLine(new Vec3(-size, -1, i), new Vec3(size, -1, i));
     }
 
-    for (let i = -size; i < size; i += 10000) {
-      renderer.drawLine(new Vec3(i, 0, -size), new Vec3(i, 0, size));
-      renderer.drawLine(new Vec3(-size, 0, i), new Vec3(size, 0, i));
+    for (let i = -size; i <= size; i += 10000) {
+      if (i % 100000 === 0)
+        renderer.color = { r: 255, g: 255, b: 255 };
+      else
+        renderer.color = { r: 100, g: 100, b: 255 };
+      renderer.drawLine(new Vec3(i, 20000, -size), new Vec3(i, 20000, size));
+      renderer.drawLine(new Vec3(-size, 20000, i), new Vec3(size, 20000, i));
     }
 
-    renderer.drawLine(new Vec3(0, 0, -size), new Vec3(0, 0, size));
-    renderer.drawLine(new Vec3(-size, 0, 0), new Vec3(size, 0, 0));
-
-
-
+    renderer.color = {r:255,g:0,b:0};
     renderer.drawObject(data.cube, new Vec3(0, 0, 0), new Vec3(angle * 2, angle, 0), new Vec3(0, 0, 0));
 
+    renderer.color = {r:100,g:100,b:100};
     renderer.drawObject(data.house, new Vec3(0, 0, 0), new Vec3(0, 66, 0), new Vec3(-180, 0, 470));
     renderer.drawObject(data.runway, new Vec3(0, 0, 0), new Vec3(0, -25, 0), new Vec3(500, 0, 270));
     renderer.drawObject(data.tower, new Vec3(0, 0, 0), new Vec3(0, -15, 0), new Vec3(700, 0, 1570));
 
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(100, 0, 100));
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(150, 0, 210));
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(180, 0, 270));
+    for (let i = 0;i<objects.length;i++){
+      renderer.color = objects[i].color;
+      renderer.drawObject(objects[i].model, objects[i].center, objects[i].rotation, objects[i].location);
+    }
 
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(665, 0, -234));
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(-34, 0, -346));
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(-457, 0, 654));
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(-576, 0, -99));
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(456, 0, -523));
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(-123, 0, 270));
-
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(6650, 0, -2340));
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(-340, 0, -3460));
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(-4570, 0, 6540));
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(-5760, 0, -990));
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(4560, 0, -5230));
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(-1230, 0, 2700));
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(6650, 0, -2340));
-
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(-3040, 0, -30460));
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(-5070, 0, 540));
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(-760, 0, -9900));
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(5600, 0, -2300));
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(-10230, 0, 27000));
-
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(6650, 0, -23040));
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(-3040, 0, 34060));
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(-35070, 0, 6540));
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(30760, 0, -990));
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(39060, 0, -12030));
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(-12030, 0, 27000));
-    renderer.drawObject(data.tree, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(-30650, 0, -2340));
-
+    renderer.color = {r:0,g:0,b:255};
     renderer.drawObject(data.plane, new Vec3(0, 0, 0), new Vec3(-2, -25, 0), new Vec3(-200, -50, -1270));
+    renderer.drawObject(data.plane, new Vec3(0, 0, 0), new Vec3(-2, -100, 0), new Vec3(14200, 3000, 24270));
 
   }
-  ctx.imageSmoothingEnabled = false;
+  //ctx.imageSmoothingEnabled = false;
   renderer.endScene();
 
   ctx.strokeStyle = "#0f0";
@@ -176,7 +178,7 @@ function main() {
   while (timerSim > 10) {
     timerSim -= 10;
     updateCam();
-    angle += 0.5;
+    angle += 0.05;
   }
   if (timerRender > 10) {
     timerRender = 0;
