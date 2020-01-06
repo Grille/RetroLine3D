@@ -24,6 +24,7 @@ let angle = 0;
 let lastMousePos = [0, 0];
 let k = []
 let resulution = 2;
+renderer.setFOV(45);
 renderer.setSize(canvas.width / resulution, canvas.height / resulution);
 for (let i = 0; i < 256; i++)k[i] = 0;
 window.addEventListener("keydown", (e) => { k[e.keyCode] = 1; console.log(e.keyCode); });
@@ -41,6 +42,7 @@ window.onresize = () => {
   canvas.height = window.innerHeight;
   renderer.setViewport(0, 0, canvas.width, canvas.height);
   renderer.setSize(canvas.width / resulution, canvas.height / resulution);
+  ctx.imageSmoothingEnabled = false;
 }
 
 function updateCam() {

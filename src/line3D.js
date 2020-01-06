@@ -55,11 +55,11 @@ class WireframeRender {
     this.width = width;
     this.height = height;
 
-    this.screenDist = this.height;
+    this.eyeZ = -this.height;
   }
 
   setFOV(fov) {
-
+    this.fov = fov;
   }
 
   setViewport(x, y, width, height) {
@@ -116,78 +116,62 @@ class WireframeRender {
   //projection matrix, transform vertex into 2d point
 
   projectPoints(inPoint1, inPoint2) {
-
-    let min = -this.screenDist;
-    let c = min;
-    min *= 0.9;
-
     let point1 = this.transformCamPoint(inPoint1);
     let point2 = this.transformCamPoint(inPoint2);
 
-    point1.z += min;
-    point2.z += min;
-    
-    let distZX1 = Math.sqrt(point1.z * point1.z + point1.x * point1.x);
-    let dist1 = Math.sqrt(distZX1 * distZX1 + point1.y * point1.y);
+    //clampZ
+    {
+      let distZ = point1.z - point2.z, distX = point1.x - point2.x, distY = point1.y - point2.y;
+      let mXZ = distX / distZ, mYZ = distY / distZ;
 
-    let distZX2 = Math.sqrt(point2.z * point2.z + point2.x * point2.x);
-    let dist2 = Math.sqrt(distZX2 * distZX2 + point2.y * point2.y);
-
-
-    if (point1.z < min && point2.z < min) return {
-      point1: new Vec3(0, 0, 0),
-      point2: new Vec3(0, 0, 0),
-    }
-    let distZ = point1.z - point2.z;
-    let distX = point1.x - point2.x;
-    let distY = point1.y - point2.y;
-
-    let m;
-
-    let { width, height } = this;
-    let hwidth = this.width / 2, hheight = this.height / 2;
-
-    function clampZ(point1, point2) {
-      if (point1.z < min) {
-        point1.z = min;
-  
-        m = distX / distZ;
-        point1.x = point2.x + m * (point1.z - point2.z);
-  
-        m = distY / distZ;
-        point1.y = point2.y + m * (point1.z - point2.z);
+      //both behind cam
+      if (point1.z < 0 && point2.z < 0) return {
+        discarded: true,
+      }
+      //point1 behind cam
+      if (point1.z < 0) {
+        point1.z = 0;
+        point1.x = point2.x + mXZ * (point1.z - point2.z);
+        point1.y = point2.y + mYZ * (point1.z - point2.z);
+      }
+      //point2 behind cam
+      if (point2.z < 0) {
+        point2.z = 0;
+        point2.x = point1.x + mXZ * (point2.z - point1.z);
+        point2.y = point1.y + mYZ * (point2.z - point1.z);
       }
     }
 
-    clampZ(point1, point2);
-    clampZ(point2, point1);
+    //project
+    let { eyeZ } = this;
 
-    let z1 = c - point1.z;
+    point1.z += eyeZ * 0.99;
+    point2.z += eyeZ * 0.99;
 
+    // point1
+    let z1 = eyeZ - point1.z;
     // get X
-    m = -point1.x / z1;
-    let x1 = m * (0 + c);
-
+    let m = -point1.x / z1;
+    let x1 = m * eyeZ;
     // get Y
     m = -point1.y / z1;
-    let y1 = m * (0 + c);
+    let y1 = m * eyeZ;
 
-    let z2 = c - point2.z;
-
+    // point2
+    let z2 = eyeZ - point2.z;
     // get X
     m = -point2.x / z2;
-    let x2 = m * (0 + c);
-
+    let x2 = m * eyeZ;
     // get Y
     m = -point2.y / z2;
-    let y2 = m * (0 + c);
+    let y2 = m * eyeZ;
 
-    //m = distX / distY;
-    //if (x < -hwidth) x = m * -hwidth + x;
+    let hWidth = this.width / 2, hHeight = this.height / 2;
 
     return {
-      point1: new Vec3((-x1 + hwidth), (y1 + hheight), dist1),
-      point2: new Vec3((-x2 + hwidth), (y2 + hheight), dist2),
+      discarded: false,
+      point1: new Vec3((-x1 + hWidth) | 0, (y1 + hHeight) | 0, -z1),
+      point2: new Vec3((-x2 + hWidth) | 0, (y2 + hHeight) | 0, -z2),
     }
   }
   //test whether object in sight and near enough
@@ -288,75 +272,78 @@ class WireframeRender {
     }
   }
   //Project two vertices and draw a line between them
-  lerp(s, e, t) {
-    return s + t * (e - s);
-  }
   drawLine(start3D, end3D){
-    let { point1, point2 } = this.projectPoints(start3D, end3D);
-
+    let { point1, point2, discarded } = this.projectPoints(start3D, end3D);
     let { width, height } = this;
 
-    let distX = point1.x - point2.x;
-    let distY = point1.y - point2.y;
-    let distZ = point1.z - point2.z;
+    if (discarded === true) return;
 
-    let m = 0;
+    //clamp to screen
+    {
+      let distX = point1.x - point2.x, distY = point1.y - point2.y, distZ = point1.z - point2.z;
+      let mYX = distY / distX, mXY = distX / distY, mZX = distZ / distX, mZY = distZ / distY;
 
-    function clamp(point1, point2) {
+      //clamp left
       if (point1.x < 0) {
         point1.x = 0;
-
-        m = distZ / distX;
-        point1.z = point2.z + m * (point1.x - point2.x);
-
-        m = distY / distX;
-        point1.y = point2.y + m * (point1.x - point2.x);
+        point1.y = point2.y + mYX * (point1.x - point2.x);
+        point1.z = point2.z + mZX * (point1.x - point2.x);
       }
-      if (point1.x > width) {
-        point1.x = width;
-
-        m = distZ / distX;
-        point1.z = point2.z + m * (point1.x - point2.x);
-
-        m = distY / distX;
-        point1.y = point2.y + m * (point1.x - point2.x);
+      if (point2.x < 0) {
+        point2.x = 0;
+        point2.y = point1.y + mYX * (point2.x - point1.x);
+        point2.z = point1.z + mZX * (point2.x - point1.x);
       }
+
+      //clamp right
+      if (point1.x >= width) {
+        point1.x = width - 1;
+        point1.y = point2.y + mYX * (point1.x - point2.x);
+        point1.z = point2.z + mZX * (point1.x - point2.x);
+      }
+      if (point2.x >= width) {
+        point2.x = width - 1;
+        point2.y = point1.y + mYX * (point2.x - point1.x);
+        point2.z = point1.z + mZX * (point2.x - point1.x);
+      }
+
+      //clamp top
       if (point1.y < 0) {
         point1.y = 0;
-
-        m = distZ / distY;
-        point1.z = point2.z + m * (point1.y - point2.y);
-
-        m = distX / distY;
-        point1.x = point2.x + m * (point1.y - point2.y);
+        point1.x = point2.x + mXY * (point1.y - point2.y);
+        point1.z = point2.z + mZY * (point1.y - point2.y);
       }
-      if (point1.y > height) {
-        point1.y = height;
+      if (point2.y < 0) {
+        point2.y = 0;
+        point2.x = point1.x + mXY * (point2.y - point1.y);
+        point2.z = point1.z + mZY * (point2.y - point1.y);
+      }
 
-        m = distZ / distY;
-        point1.z = point2.z + m * (point1.y - point2.y);
-
-        m = distX / distY;
-        point1.x = point2.x + m * (point1.y - point2.y);
+      //clamp bottom
+      if (point1.y >= height) {
+        point1.y = height - 1;
+        point1.x = point2.x + mXY * (point1.y - point2.y);
+        point1.z = point2.z + mZY * (point1.y - point2.y);
+      }
+      if (point2.y >= height) {
+        point2.y = height - 1;
+        point2.x = point1.x + mXY * (point2.y - point1.y);
+        point2.z = point1.z + mZY * (point2.y - point1.y);
       }
     }
-    clamp(point1, point2);
-    clamp(point2, point1);
-
 
     if (point1.x === point2.x && point1.y === point2.y) return;
 
-    let dist = Math.max(Math.abs(point1.x - point2.x), Math.abs(point1.y - point2.y))+1;
+    let dist = Math.max(Math.abs(point1.x - point2.x), Math.abs(point1.y - point2.y)) + 1;
 
-    for (let step = 0; step < dist; step++) {
+    for (let step = 0; step <= dist; step++) {
       let t = step / dist;
-      let x = this.lerp(point1.x, point2.x, t);
-      let y = this.lerp(point1.y, point2.y, t);
-      let z = this.lerp(point1.z, point2.z, t);
-      let depth = z;
-      let index = (x|0) + (y|0) * this.width;
-      if (this.depthBuffer[index] > depth || this.depthBuffer[index] === 0) {
-        this.depthBuffer[index] = depth;
+      let x = point1.x + t * (point2.x - point1.x);
+      let y = point1.y + t * (point2.y - point1.y);
+      let z = point1.z + t * (point2.z - point1.z);
+      let index = (x|0) + (y|0) * width;
+      if (this.depthBuffer[index] > z || this.depthBuffer[index] === 0) {
+        this.depthBuffer[index] = z;
         this.colorBuffer[index * 4 + 0] = this.color.r;
         this.colorBuffer[index * 4 + 1] = this.color.g;
         this.colorBuffer[index * 4 + 2] = this.color.b;
