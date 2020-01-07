@@ -65,11 +65,92 @@ class WireframeRender {
   setViewport(x, y, width, height) {
     this.viewport = { x, y, width, height };
   }
+
+  parseOBJ(text) {
+    let lines = text.split("\n");
+    let size = 1;
+    let vertices = [];
+    let indices = [];
+
+    //parse text
+    for (let i = 0; i < lines.length; i++) {
+      let e = lines[i].split(" ");
+      try {
+        switch (e[0]) {
+          case "v":
+            vertices.push(new Vec3(
+              parseFloat(e[1]),
+              parseFloat(e[2]),
+              parseFloat(e[3]),
+            ));
+            break;
+          case "f":
+            let index0 = parseInt(e[1].split("/", 1)[0]) - 1;
+            indices.push(index0);
+            for (let i = 2; i < e.length; i++) {
+              let index_ = parseInt(e[i].split("/", 1)[0]) - 1;
+              indices.push(index_);
+              indices.push(index_);
+            }
+            indices.push(index0);
+            break;
+          case "l":
+            indices.push(parseInt(e[1]) - 1);
+            indices.push(parseInt(e[2]) - 1);
+            break;
+        }
+      }
+      catch{
+        console.error(object);
+      }
+    }
+    return fixMesh({
+      size,
+      vertices,
+      indices,
+    });
+  }
+  fixMesh(mesh){
+    let { vertices, indices } = mesh;
+    //find bounding box size
+    let max = 0;
+    for (let i = 0; i < vertices.length; i++) {
+      let vertex = vertices[i];
+      max = Math.max(max, Math.abs(vertex.x), Math.abs(vertex.y), Math.abs(vertex.z));
+    }
+    let size = Math.sqrt(max * max + max * max);
+
+    //sort out redundant lines
+    let cleanIndices = [];
+    for (let i1 = 0; i1 < indices.length; i1 += 2) {
+      let consonance = false;
+      for (let i2 = i1 + 2; i2 < indices.length; i2 += 2) {
+        if (
+          (indices[i1 + 0] == indices[i2 + 0] && indices[i1 + 1] == indices[i2 + 1]) ||
+          (indices[i1 + 0] == indices[i2 + 1] && indices[i1 + 1] == indices[i2 + 0])) {
+          consonance = true;
+          break;
+        }
+      }
+      if (consonance === false) {
+        cleanIndices.push(indices[i1 + 0]);
+        cleanIndices.push(indices[i1 + 1]);
+      }
+    }
+    return {
+      size,
+      vertices,
+      drawDist: mesh.drawDist,
+      indices: cleanIndices,
+    }
+  }
   //transforms vertex of an object
-  transformVertex(point3D, center, sin, cos, translate) {
+  transformVertex(point3D, center, sin, cos, translate, scale) {
 
     let p = new Vec3(point3D)
     let b1, b2;
+
+    p.x *= scale; p.y *= scale; p.z *= scale;
 
     p.x -= center.x; p.y -= center.y; p.z -= center.z;
     // X
@@ -175,42 +256,40 @@ class WireframeRender {
     }
   }
   //test whether object in sight and near enough
-  objectVisible(location, model) {
+  objectVisible(location, model, scale) {
 
-    let size = model.size;
-    let min = -this.screenDist;
-    let c = min;
-    min *= 0.9;
+    let size = model.size * scale;
 
     let p = this.transformCamPoint(location);
     let distZX = Math.sqrt(p.z * p.z + p.x * p.x);
     let dist = Math.sqrt(distZX * distZX + p.y * p.y);
     dist += size
-    if (dist < -size) return false;
-    if (dist > model.renderDist + size) return false;
+    if (p.z < -size) return false;
+    if (dist + size > model.drawDist) return false;
 
-    dist += min;
+    let { eyeZ } = this;
+    dist = p.z + size + eyeZ* 0.99;
 
-    let distZ, distX, distY, m;
-    let out = 0;
+    let distZ, m;
 
-    distZ = c - dist;
+    distZ = eyeZ - dist;
     let x, y;
 
+    
     // test X
     m = (-p.x - size) / distZ;
-    x = -m * (0 + c);
+    x = -m * (0 + eyeZ);
     if (x < -this.width / 2) return false;
     m = (-p.x + size) / distZ;
-    x = -m * (0 + c);
+    x = -m * (0 + eyeZ);
     if (x > this.width / 2) return false;
-
+    
     // test Y
     m = (-p.y - size) / distZ;
-    y = -m * (0 + c);
+    y = -m * (0 + eyeZ);
     if (y < -this.height / 2) return false;
     m = (-p.y + size) / distZ;
-    y = -m * (0 + c);
+    y = -m * (0 + eyeZ);
     if (y > this.height / 2) return false;
 
     return true;
@@ -219,9 +298,10 @@ class WireframeRender {
 
   //region public
   //Project a group of vertices and draw the lines between them
-  drawObject(model, center, rotate, translate) {
+  drawMesh(model, center, rotate, translate, scale = 1) {
+    //model.renderDist=20000
+    if (!this.objectVisible(translate, model, scale)) return;
 
-    if (!this.objectVisible(translate, model)) return;
 
     let sin = new Vec3(0, 0, 0); let cos = new Vec3(1, 1, 1);
     
@@ -238,37 +318,11 @@ class WireframeRender {
       cos.z = Math.cos(rotate.z * 3.14159265 / 180);
     }
 
-    let vertex = model.vertex;
-    for (let io = 0; io < model.lines.length; io++) {
-      let line = model.lines[io]
-      if (line[0] === 0) {
-        for (let i = 0; i < (line.length - 1) / 2; i++) {
-          let vp = line[i * 2 + 1] * 3
-          let pointA = this.transformVertex(new Vec3(vertex[vp + 0], vertex[vp + 1], vertex[vp + 2]), center, sin, cos, translate);
-          vp = line[i * 2 + 2] * 3
-          let pointB = this.transformVertex(new Vec3(vertex[vp + 0], vertex[vp + 1], vertex[vp + 2]), center, sin, cos, translate);
-          this.drawLine(pointA, pointB);
-        }
-      }
-      else if (line[0] === 1) {
-        for (let i = 0; i < (line.length) - 2; i++) {
-          let vp = line[i + 1] * 3
-          let pointA = this.transformVertex(new Vec3(vertex[vp + 0], vertex[vp + 1], vertex[vp + 2]), center, sin, cos, translate);
-          vp = line[i + 2] * 3
-          let pointB = this.transformVertex(new Vec3(vertex[vp + 0], vertex[vp + 1], vertex[vp + 2]), center, sin, cos, translate);
-          this.drawLine(pointA, pointB);
-        }
-      }
-      else if (line[0] === 2) {
-        let vp = line[1] * 3
-        let pointA = this.transformVertex(new Vec3(vertex[vp + 0], vertex[vp + 1], vertex[vp + 2]), center, sin, cos, translate);
-        for (let i = 0; i < (line.length) - 2; i++) {
-          vp = line[i + 2] * 3
-          let pointB = this.transformVertex(new Vec3(vertex[vp + 0], vertex[vp + 1], vertex[vp + 2]), center, sin, cos, translate);
-          this.drawLine(pointA, pointB);
-        }
-
-      }
+    let { vertices, indices } = model;
+    for (let i = 0; i < indices.length; i += 2) {
+      let vertex1 = this.transformVertex(vertices[indices[i + 0]], center, sin, cos, translate, scale);
+      let vertex2 = this.transformVertex(vertices[indices[i + 1]], center, sin, cos, translate, scale);
+      this.drawLine(vertex1, vertex2);
     }
   }
   //Project two vertices and draw a line between them
