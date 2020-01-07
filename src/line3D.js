@@ -100,7 +100,7 @@ class WireframeRender {
             break;
         }
       }
-      catch{
+      catch (e) {
         console.error(object);
       }
     }
@@ -265,7 +265,7 @@ class WireframeRender {
     let dist = Math.sqrt(distZX * distZX + p.y * p.y);
     dist += size
     if (p.z < -size) return false;
-    if (dist + size > model.drawDist) return false;
+    if (dist > model.drawDist + size) return false;
 
     let { eyeZ } = this;
     dist = p.z + size + eyeZ* 0.99;
