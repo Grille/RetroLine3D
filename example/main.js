@@ -17,13 +17,24 @@ for (let key in data) {
 let angle = 0;
 let k = []
 let resulution = 2;
+let lookMode = false;
 renderer.setFOV(45);
 renderer.setSize(canvas.width / resulution, canvas.height / resulution);
 for (let i = 0; i < 256; i++)k[i] = 0;
 window.addEventListener("keydown", (e) => { k[e.keyCode] = 1; console.log(e.keyCode); });
 window.addEventListener("keyup", (e) => { k[e.keyCode] = 0 });
+window.addEventListener("mousedown", (e) => {
+  if (lookMode === true){
+    lookMode = false;
+    document.exitPointerLock();
+  }
+  else {
+    lookMode = true;
+    canvas.requestPointerLock();
+  }
+});
 window.addEventListener("mousemove", (e) => {
-  if (e.buttons === 1) {
+  if (lookMode === true) {
     let { camRot } = renderer;
     camRot.x -= e.movementY / 2;
     camRot.y += e.movementX / 2;
