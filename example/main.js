@@ -25,13 +25,14 @@ window.addEventListener("keydown", (e) => { k[e.keyCode] = 1; console.log(e.keyC
 window.addEventListener("keyup", (e) => { k[e.keyCode] = 0 });
 window.addEventListener("mousedown", (e) => {
   if (lookMode === true){
-    lookMode = false;
     document.exitPointerLock();
   }
   else {
-    lookMode = true;
     canvas.requestPointerLock();
   }
+});
+document.addEventListener("pointerlockchange", (e) => {
+  lookMode = !lookMode;
 });
 window.addEventListener("mousemove", (e) => {
   if (lookMode === true) {

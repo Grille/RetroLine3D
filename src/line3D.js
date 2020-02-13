@@ -24,11 +24,9 @@ class WireframeRender {
 
     this.color = { r: 0, g: 255, b: 0 };
     this.canvas = document.createElement('canvas');
-    this.ctx = this.canvas.getContext('2d');
 
-    this.ctx.lineWidth = 1 / this.resolutionFactor;
+    this.ctx = this.canvas.getContext('2d');
     this.ctx.imageSmoothingEnabled = false;
-    this.ctx.miterLimit = 100;
 
     this.camPos = new Vec3(-380, -623, 2230)
     this.camRot = new Vec3(341, 347, 0);
