@@ -16,26 +16,41 @@ class Vec3 {
   }
 }
 
+class Color {
+  constructor(r = 0, g = 0, b = 0) {
+    if (typeof r == 'object') {
+      this.r = p1.r;
+      this.g = p1.g;
+      this.b = p1.b;
+    }
+    else {
+      this.r = r;
+      this.g = g;
+      this.b = b;
+    }
+  }
+}
+
 class WireframeRender {
   constructor(ctx) {
     this.dstCtx = ctx;
     this.dstCanvas = ctx.canvas;
-    this.resolutionFactor = 1;
 
-    this.color = { r: 0, g: 255, b: 0 };
+    this.color = new Color(0, 255, 0);
     this.canvas = document.createElement('canvas');
 
     this.ctx = this.canvas.getContext('2d');
     this.ctx.imageSmoothingEnabled = false;
 
     this.camPos = new Vec3(-380, -623, 2230)
-    this.camRot = new Vec3(341, 347, 0);
+    this.camRot = new Vec3(341 / 180 * Math.PI, 347 / 180 * Math.PI, 0);
     this.camSin = new Vec3(0, 0, 0);
     this.camCos = new Vec3(0, 0, 0);
 
     this.depthBuffer = new Float32Array(0);
     this.colorBuffer = new Uint8ClampedArray(0);
 
+    this.fov = 90;
     this.setSize(this.dstCanvas.width, this.dstCanvas.height);
     this.setViewport(0, 0, this.width, this.height);
 
@@ -53,11 +68,18 @@ class WireframeRender {
     this.width = width;
     this.height = height;
 
-    this.eyeZ = -this.height;
+    this.calcEyeZ();
   }
 
   setFOV(fov) {
     this.fov = fov;
+
+    this.calcEyeZ();
+  }
+
+  calcEyeZ() {
+    let rad = (90 - this.fov / 2) * Math.PI / 180;
+    this.eyeZ = -(Math.tan(rad) * (this.width / 2));
   }
 
   setViewport(x, y, width, height) {
@@ -102,7 +124,7 @@ class WireframeRender {
         console.error(object);
       }
     }
-    return fixMesh({
+    return this.fixMesh({
       size,
       vertices,
       indices,
@@ -146,23 +168,23 @@ class WireframeRender {
   transformVertex(point3D, center, sin, cos, translate, scale) {
 
     let p = new Vec3(point3D)
-    let b1, b2;
+    let x, y, z;
 
     p.x *= scale; p.y *= scale; p.z *= scale;
 
     p.x -= center.x; p.y -= center.y; p.z -= center.z;
     // X
-    b1 = p.y; b2 = p.z;
-    p.y = b1 * cos.x - b2 * sin.x;
-    p.z = b2 * cos.x + b1 * sin.x;
-    //Y
-    b1 = p.x; b2 = p.z;
-    p.x = b1 * cos.y - b2 * sin.y;
-    p.z = b2 * cos.y + b1 * sin.y;
+    y = p.y; z = p.z;
+    p.y = y * cos.x - z * sin.x;
+    p.z = z * cos.x + y * sin.x;
+    // Y
+    x = p.x; z = p.z;
+    p.x = x * cos.y - z * sin.y;
+    p.z = z * cos.y + x * sin.y;
     // Z
-    b1 = p.x; b2 = p.y;
-    p.x = b1 * cos.z - b2 * sin.z;
-    p.y = b2 * cos.z + b1 * sin.z;
+    x = p.x; y = p.y;
+    p.x = x * cos.z - y * sin.z;
+    p.y = y * cos.z + x * sin.z;
     // Translate
     p.x += center.x; p.y += center.y; p.z += center.z;
     p.x += translate.x; p.y += translate.y; p.z += translate.z;
@@ -173,22 +195,21 @@ class WireframeRender {
   //transform vertex relative to camera
   transformCamPoint(point3D) {
     let p = new Vec3(point3D);
-    let b1, b2;
+    let x, y, z;
     let { camPos, camCos, camSin } = this;
     // Y
-
     p.x += camPos.x; p.y += camPos.y; p.z += camPos.z;
-    b1 = p.x; b2 = p.z;
-    p.x = b1 * camCos.y - b2 * camSin.y
-    p.z = b2 * camCos.y + b1 * camSin.y
+    x = p.x; z = p.z;
+    p.x = x * camCos.y - z * camSin.y
+    p.z = z * camCos.y + x * camSin.y
     // X
-    b1 = p.y; b2 = p.z;
-    p.y = b1 * camCos.x - b2 * camSin.x;
-    p.z = b2 * camCos.x + b1 * camSin.x
-    // // Z
-    b1 = p.x; b2 = p.y;
-    p.x = b1 * camCos.z - b2 * camSin.z
-    p.y = b2 * camCos.z + b1 * camSin.z
+    y = p.y; z = p.z;
+    p.y = y * camCos.x - z * camSin.x;
+    p.z = z * camCos.x + y * camSin.x
+    // Z
+    x = p.x; y = p.y;
+    p.x = x * camCos.z - y * camSin.z
+    p.y = y * camCos.z + x * camSin.z
 
     return p;
   }
@@ -210,14 +231,14 @@ class WireframeRender {
       //point1 behind cam
       if (point1.z < 0) {
         point1.z = 0;
-        point1.x = point2.x + mXZ * (point1.z - point2.z);
-        point1.y = point2.y + mYZ * (point1.z - point2.z);
+        point1.x = point2.x + mXZ * -point2.z;
+        point1.y = point2.y + mYZ * -point2.z;
       }
       //point2 behind cam
       if (point2.z < 0) {
         point2.z = 0;
-        point2.x = point1.x + mXZ * (point2.z - point1.z);
-        point2.y = point1.y + mYZ * (point2.z - point1.z);
+        point2.x = point1.x + mXZ * -point1.z;
+        point2.y = point1.y + mYZ * -point1.z;
       }
     }
 
@@ -268,10 +289,8 @@ class WireframeRender {
     let { eyeZ } = this;
     dist = p.z + size + eyeZ* 0.99;
 
-    let distZ, m;
-
-    distZ = eyeZ - dist;
-    let x, y;
+    let distZ = eyeZ - dist;
+    let x, y, m;
 
     
     // test X
@@ -304,16 +323,16 @@ class WireframeRender {
     let sin = new Vec3(0, 0, 0); let cos = new Vec3(1, 1, 1);
     
     if (rotate.x !== 0) {
-      sin.x = Math.sin(rotate.x * 3.14159265 / 180);
-      cos.x = Math.cos(rotate.x * 3.14159265 / 180);
+      sin.x = Math.sin(rotate.x);
+      cos.x = Math.cos(rotate.x);
     }
     if (rotate.y !== 0) {
-      sin.y = Math.sin(rotate.y * 3.14159265 / 180);
-      cos.y = Math.cos(rotate.y * 3.14159265 / 180);
+      sin.y = Math.sin(rotate.y);
+      cos.y = Math.cos(rotate.y);
     }
     if (rotate.z !== 0) {
-      sin.z = Math.sin(rotate.z * 3.14159265 / 180);
-      cos.z = Math.cos(rotate.z * 3.14159265 / 180);
+      sin.z = Math.sin(rotate.z);
+      cos.z = Math.cos(rotate.z);
     }
 
     let { vertices, indices } = model;
@@ -383,16 +402,20 @@ class WireframeRender {
         point2.z = point1.z + mZY * (point2.y - point1.y);
       }
     }
-
+    
+    //discard out of screen
     if (point1.x === point2.x && point1.y === point2.y) return;
 
-    let dist = Math.max(Math.abs(point1.x - point2.x), Math.abs(point1.y - point2.y)) + 1;
-
+    //draw line
+    let distX = (point2.x - point1.x)
+    let distY = (point2.y - point1.y)
+    let distZ = (point2.z - point1.z)
+    let dist = Math.max(Math.abs(distX), Math.abs(distY)) + 1;
     for (let step = 0; step <= dist; step++) {
       let t = step / dist;
-      let x = point1.x + t * (point2.x - point1.x);
-      let y = point1.y + t * (point2.y - point1.y);
-      let z = point1.z + t * (point2.z - point1.z);
+      let x = point1.x + t * distX;
+      let y = point1.y + t * distY;
+      let z = point1.z + t * distZ; 
       let index = (x|0) + (y|0) * width;
       if (this.depthBuffer[index] > z || this.depthBuffer[index] === 0) {
         this.depthBuffer[index] = z;
@@ -404,6 +427,11 @@ class WireframeRender {
   }
   
   startScene() {
+    let {camSin, camCos, camRot} = this;
+    camSin.x = Math.sin(camRot.x), camCos.x = Math.cos(camRot.x);
+    camSin.y = Math.sin(camRot.y), camCos.y = Math.cos(camRot.y);
+    camSin.z = Math.sin(camRot.z), camCos.z = Math.cos(camRot.z);
+
     let size = this.width * this.height;
     for (let i = 0; i < size; i++) {
       this.depthBuffer[i] = 0;
