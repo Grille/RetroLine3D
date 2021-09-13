@@ -22,7 +22,7 @@ let lookMode = false;
 renderer.setFOV(90);
 renderer.setSize(canvas.width / resulution, canvas.height / resulution);
 for (let i = 0; i < 256; i++)k[i] = 0;
-window.addEventListener("keydown", (e) => { k[e.keyCode] = 1; console.log(e.keyCode); });
+window.addEventListener("keydown", (e) => { k[e.keyCode] = 1; /*console.log(e.keyCode);*/ });
 window.addEventListener("keyup", (e) => { k[e.keyCode] = 0 });
 window.addEventListener("mousedown", (e) => {
   if (lookMode === true){
@@ -99,57 +99,41 @@ function loadText(path) {
 
 function updateCam() {
 
-  //if (camRot.x <= 90) camRot.x = 0;
-  //if (camRot.x < 180) camRot.x = 180;
+  
+  const PI2 = Math.PI * 2;
 
   let { camRot, camSin, camCos, camPos } = renderer;
-  if (camRot.y >= 360) camRot.y -= 360;
-  if (camRot.y < 0) camRot.y += 360;
 
-  if (camRot.z >= 360) camRot.z -= 360;
-  if (camRot.z < 0) camRot.z += 360;
+
+  //if (camRot.x >= PI2) camRot.y -= PI2;
+  if (camRot.x < -Math.PI / 2) camRot.x = -Math.PI / 2;
+  if (camRot.x > Math.PI / 2) camRot.x = Math.PI / 2;
+
+  if (camRot.y >= PI2) camRot.y -= PI2;
+  if (camRot.y < 0) camRot.y += PI2;
 
   if (k[KEY_LEFT] === 1 || k[KEY_UP] === 1 || k[KEY_RIGHT] === 1 || k[KEY_DOWN] === 1) {
 
     let speed =8;
 
     if (k[KEY_SHIFT] === 1) speed *= 8;
-    /*
-    camPos.x += camRot.x;
-    camPos.y += camRot.y;
-    camPos.z += camRot.z;
-    */
     
-    //Y
-    let yv = camRot.x / Math.PI;
-    if (yv > 1) yv = 1 - (yv - 1);
-    if (yv < 0.5) yv = 1 - (1 - yv * 2);
-    else yv = 1 - ((yv - 0.5) * 2);
-    if (camRot.x > Math.PI) yv = -yv;
-    if (k[KEY_UP] === 1) camPos.y -= yv * speed;
-    else if (k[KEY_DOWN] === 1) camPos.y += yv * speed;
-    if (yv < 0) yv = -yv; yv = 1 - yv;
-    // Z
-    let zv = camRot.y / Math.PI;
-    if (zv > 1) zv = 1 - (zv - 1);
-    if (zv < 0.5) zv = 1 - zv * 2;
-    else zv = (1 - zv - 0.5) * 2;
-    if (k[KEY_UP] === 1) camPos.z -= (zv * speed) * yv;
-    else if (k[KEY_DOWN] === 1) camPos.z += (zv * speed) * yv;
-    if (k[KEY_RIGHT] === 1) camPos.x -= zv * speed;
-    else if (k[KEY_LEFT] === 1) camPos.x += zv * speed;
+    let camDir = camRot.clone();
 
-    //X
-    let xv = camRot.y / Math.PI;
-    if (xv > 1) xv = 1 - (xv - 1);
-    if (xv < 0.5) xv = 1 - (1 - xv * 2);
-    else xv = 1 - ((xv - 0.5) * 2);
-    if (camRot.y > Math.PI) xv = -xv;
-    if (k[KEY_UP] === 1) camPos.x -= (xv * speed) * yv;
-    else if (k[KEY_DOWN] === 1) camPos.x += (xv * speed) * yv;
-    if (k[KEY_RIGHT] === 1) camPos.z += xv * speed;
-    else if (k[KEY_LEFT] === 1) camPos.z -= xv * speed;
+    if (k[KEY_DOWN] == 1){
+      camDir.y += Math.PI;
+      camDir.x += Math.PI;
+    }
     
+    if (camDir.x >= PI2) camDir.y -= PI2;
+    if (camDir.x < 0) camDir.y += PI2;
+  
+    if (camDir.y >= PI2) camDir.y -= PI2;
+    if (camDir.y < 0) camDir.y += PI2;
+    
+    camPos.x -= (speed * Math.sin(camDir.y));
+    camPos.z -= (speed * Math.cos(camDir.y));
+    camPos.y -= (speed * Math.sin(camDir.x));
 
   }
 

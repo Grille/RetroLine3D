@@ -14,6 +14,16 @@ class Vec3 {
       this.z = p3;
     }
   }
+  length() {
+    return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
+  }
+  normalize() {
+    let length = this.length();
+    return new Vec3(this.x / length, this.y / length, this.z / length);
+  }
+  clone() {
+    return new Vec3(this.x, this.y, this.z);
+  }
 }
 
 class Color {
@@ -28,6 +38,16 @@ class Color {
       this.g = g;
       this.b = b;
     }
+  }
+}
+
+class Camera{
+  constructor(ctx) {
+    this.pos = new Vec3(0,0,0);
+    this.angle = new Vec3(0,0,0);
+  }
+  moveForward(speed){
+    
   }
 }
 
