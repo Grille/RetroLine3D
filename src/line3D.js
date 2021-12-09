@@ -15,7 +15,7 @@ class Vec3 {
     }
   }
   length() {
-    return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
+    return Math.sqrt((this.x * this.x) + (this.y * this.y) + (this.z * this.z));
   }
   normalize() {
     let length = this.length();
@@ -39,15 +39,27 @@ class Color {
       this.b = b;
     }
   }
+  clone() {
+    return new Color(this.r, this.g, this.b);
+  }
 }
 
-class Camera{
+class Camera {
   constructor(ctx) {
-    this.pos = new Vec3(0,0,0);
-    this.angle = new Vec3(0,0,0);
+    this.speed = 1;
+    this.pos = new Vec3(0, 0, 0);
+    this.angle = new Vec3(0, 0, 0);
   }
-  moveForward(speed){
-    
+  lockAt(pos) {
+
+  }
+  moveForward(speed) {
+    this.pos.x -= (speed * Math.sin(camDir.y));
+    this.pos.z -= (speed * Math.cos(camDir.y));
+    this.pos.y -= (speed * Math.sin(camDir.x));
+  }
+  update() {
+
   }
 }
 
@@ -150,7 +162,7 @@ class WireframeRender {
       indices,
     });
   }
-  fixMesh(mesh){
+  fixMesh(mesh) {
     let { vertices, indices } = mesh;
     //find bounding box size
     let max = 0;
@@ -307,12 +319,12 @@ class WireframeRender {
     if (dist > model.drawDist + size) return false;
 
     let { eyeZ } = this;
-    dist = p.z + size + eyeZ* 0.99;
+    dist = p.z + size + eyeZ * 0.99;
 
     let distZ = eyeZ - dist;
     let x, y, m;
 
-    
+
     // test X
     m = (-p.x - size) / distZ;
     x = -m * (0 + eyeZ);
@@ -320,7 +332,7 @@ class WireframeRender {
     m = (-p.x + size) / distZ;
     x = -m * (0 + eyeZ);
     if (x > this.width / 2) return false;
-    
+
     // test Y
     m = (-p.y - size) / distZ;
     y = -m * (0 + eyeZ);
@@ -341,7 +353,7 @@ class WireframeRender {
 
 
     let sin = new Vec3(0, 0, 0); let cos = new Vec3(1, 1, 1);
-    
+
     if (rotate.x !== 0) {
       sin.x = Math.sin(rotate.x);
       cos.x = Math.cos(rotate.x);
@@ -363,7 +375,7 @@ class WireframeRender {
     }
   }
   //Project two vertices and draw a line between them
-  drawLine(start3D, end3D){
+  drawLine(start3D, end3D) {
     let { point1, point2, discarded } = this.projectPoints(start3D, end3D);
     let { width, height } = this;
 
@@ -422,7 +434,7 @@ class WireframeRender {
         point2.z = point1.z + mZY * (point2.y - point1.y);
       }
     }
-    
+
     //discard out of screen
     if (point1.x === point2.x && point1.y === point2.y) return;
 
@@ -435,8 +447,8 @@ class WireframeRender {
       let t = step / dist;
       let x = point1.x + t * distX;
       let y = point1.y + t * distY;
-      let z = point1.z + t * distZ; 
-      let index = (x|0) + (y|0) * width;
+      let z = point1.z + t * distZ;
+      let index = (x | 0) + (y | 0) * width;
       if (this.depthBuffer[index] > z || this.depthBuffer[index] === 0) {
         this.depthBuffer[index] = z;
         this.colorBuffer[index * 4 + 0] = this.color.r;
@@ -445,9 +457,9 @@ class WireframeRender {
       }
     }
   }
-  
+
   startScene() {
-    let {camSin, camCos, camRot} = this;
+    let { camSin, camCos, camRot } = this;
     camSin.x = Math.sin(camRot.x), camCos.x = Math.cos(camRot.x);
     camSin.y = Math.sin(camRot.y), camCos.y = Math.cos(camRot.y);
     camSin.z = Math.sin(camRot.z), camCos.z = Math.cos(camRot.z);

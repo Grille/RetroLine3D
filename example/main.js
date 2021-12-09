@@ -100,7 +100,7 @@ function loadText(path) {
 function updateCam() {
 
   
-  const PI2 = Math.PI * 2;
+  const PIx2 = Math.PI * 2;
 
   let { camRot, camSin, camCos, camPos } = renderer;
 
@@ -109,8 +109,8 @@ function updateCam() {
   if (camRot.x < -Math.PI / 2) camRot.x = -Math.PI / 2;
   if (camRot.x > Math.PI / 2) camRot.x = Math.PI / 2;
 
-  if (camRot.y >= PI2) camRot.y -= PI2;
-  if (camRot.y < 0) camRot.y += PI2;
+  if (camRot.y >= PIx2) camRot.y -= PIx2;
+  if (camRot.y < 0) camRot.y += PIx2;
 
   if (k[KEY_LEFT] === 1 || k[KEY_UP] === 1 || k[KEY_RIGHT] === 1 || k[KEY_DOWN] === 1) {
 
@@ -125,11 +125,11 @@ function updateCam() {
       camDir.x += Math.PI;
     }
     
-    if (camDir.x >= PI2) camDir.y -= PI2;
-    if (camDir.x < 0) camDir.y += PI2;
+    if (camDir.x >= PIx2) camDir.y -= PIx2;
+    if (camDir.x < 0) camDir.y += PIx2;
   
-    if (camDir.y >= PI2) camDir.y -= PI2;
-    if (camDir.y < 0) camDir.y += PI2;
+    if (camDir.y >= PIx2) camDir.y -= PIx2;
+    if (camDir.y < 0) camDir.y += PIx2;
     
     camPos.x -= (speed * Math.sin(camDir.y));
     camPos.z -= (speed * Math.cos(camDir.y));
