@@ -7,6 +7,7 @@ import MeshInstance from "./MeshInstance.js";
 import Mesh from "./Mesh.js";
 
 const KEY_UP = 38, KEY_LEFT = 37, KEY_DOWN = 40, KEY_RIGHT = 39, KEY_SHIFT = 16;
+const KEY_W = 87, KEY_A = 65, KEY_S = 83, KEY_D = 68;
 
 var canvas = document.getElementById("canvas") as HTMLCanvasElement;
 let ctx = canvas.getContext("2d");
@@ -18,21 +19,26 @@ let fpsDate = Date.now();
 let timer = Date.now();
 let timerRender = 0;
 let timerSim = 0;
-let data = JSON.parse(loadText("./assets/models.json"));
+let dropmesh: Mesh[] = [];
 
-let models: any = {};
-for (let key in data) {
-  models[key] = createModel(data[key]);
-}
+let meshes_obj = Mesh.ParseOBJ(loadText("./assets/models.obj"));
+
+let meshes = {
+  cloud: meshes_obj.cloud,
+  tower: meshes_obj.atc,
+  house: meshes_obj.house,
+  tree: meshes_obj.tree,
+};
+
 let angle = 0;
-let k: number[] = []
+let k: boolean[] = []
 let resulution = 2;
 let lookMode = false;
-renderer.setFOV(90);
+renderer.camera.SetFOV(90);
 renderer.setSize(canvas.width / resulution, canvas.height / resulution);
-for (let i = 0; i < 256; i++)k[i] = 0;
-window.addEventListener("keydown", (e) => { k[e.keyCode] = 1; /*console.log(e.keyCode);*/ });
-window.addEventListener("keyup", (e) => { k[e.keyCode] = 0 });
+for (let i = 0; i < 256; i++)k[i] = false;
+window.addEventListener("keydown", (e) => { k[e.keyCode] = true; /*console.log(e.keyCode);*/ });
+window.addEventListener("keyup", (e) => { k[e.keyCode] = false });
 window.addEventListener("mousedown", (e) => {
   if (lookMode === true) {
     document.exitPointerLock();
@@ -46,9 +52,7 @@ document.addEventListener("pointerlockchange", (e) => {
 });
 window.addEventListener("mousemove", (e) => {
   if (lookMode === true) {
-    let { camRot } = renderer;
-    camRot.x -= e.movementY / 50;
-    camRot.y += e.movementX / 50;
+    renderer.camera.RotateByMouse(e.movementX * 0.1, e.movementY * 0.1)
   }
 });
 window.onresize = () => {
@@ -62,47 +66,42 @@ window.onresize = () => {
 }
 window.onresize(null!);
 
-function createModel(input: any): Mesh {
-  let drawDist = input.drawDist;
-  let vertices: Vec3[] = [];
-  let indices: number[] = [];
-  for (let i = 0; i < input.vertices.length; i += 3) {
-    vertices.push(new Vec3(input.vertices[i + 0], input.vertices[i + 1], input.vertices[i + 2]))
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    window.addEventListener(eventName, (e)=>{
+      e.preventDefault();
+      e.stopPropagation();
+    });
+});
+window.addEventListener('drop', (e) => {
+  const dt = e.dataTransfer;
+  if (dt == null)
+    return;
+  const files = dt.files;
+  if (files.length > 0) {
+    const file = files[0];
+    readFile(file);
   }
-  for (let i1 = 0; i1 < input.lines.length; i1++) {
-    let data = input.lines[i1];
-    let type = data[0];
-    switch (type) {
-      case 0:
-        for (let i2 = 1; i2 < data.length; i2 += 2) {
-          indices.push(data[i2 + 0]);
-          indices.push(data[i2 + 1]);
-        }
-        break;
-      case 1:
-        for (let i2 = 1; i2 < data.length - 1; i2 += 1) {
-          indices.push(data[i2 + 0]);
-          indices.push(data[i2 + 1]);
-        }
-        break;
-      case 2:
-        for (let i2 = 2; i2 < data.length; i2 += 1) {
-          indices.push(data[1]);
-          indices.push(data[i2]);
-        }
-        break;
+});
+function readFile(file: File) {
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    const text = e.target?.result;
+    try {
+      dropmesh = []
+      var drop = Mesh.ParseOBJ(text as string);
+      for (let key in drop) {
+        dropmesh.push(drop[key])
+      }
+    }
+    catch (e) {
+      dropmesh = []
+      alert(e);
     }
   }
-
-
-
-  var mesh = new Mesh();
-  mesh.drawDist = drawDist;
-  mesh.vertices = vertices;
-  mesh.indices = indices;
-  mesh.CalcBoundings();
-  return mesh;
+  reader.readAsText(file);
 }
+
+
 
 function loadText(path: string): string {
   let request = new XMLHttpRequest();
@@ -112,110 +111,128 @@ function loadText(path: string): string {
 }
 
 function updateCam() {
+  let camera = renderer.camera;
+  let inputs = camera.inputs;
 
+  inputs.moveLeft = k[KEY_LEFT] || k[KEY_A];
+  inputs.moveUp = k[KEY_UP] || k[KEY_W];
+  inputs.moveRight = k[KEY_RIGHT] || k[KEY_D];
+  inputs.moveDown = k[KEY_DOWN] || k[KEY_S];
 
-  const PIx2 = Math.PI * 2;
-
-  let { camRot, camSin, camCos, camPos } = renderer;
-
-
-  //if (camRot.x >= PI2) camRot.y -= PI2;
-  if (camRot.x < -Math.PI / 2) camRot.x = -Math.PI / 2;
-  if (camRot.x > Math.PI / 2) camRot.x = Math.PI / 2;
-
-  if (camRot.y >= PIx2) camRot.y -= PIx2;
-  if (camRot.y < 0) camRot.y += PIx2;
-
-  if (k[KEY_LEFT] === 1 || k[KEY_UP] === 1 || k[KEY_RIGHT] === 1 || k[KEY_DOWN] === 1) {
-
-    let speed = 8;
-
-    if (k[KEY_SHIFT] === 1) speed *= 8;
-
-    let camDir = camRot.clone();
-
-    if (k[KEY_DOWN] == 1) {
-      camDir.y += Math.PI;
-      camDir.x += Math.PI;
-    }
-
-    if (camDir.x >= PIx2) camDir.y -= PIx2;
-    if (camDir.x < 0) camDir.y += PIx2;
-
-    if (camDir.y >= PIx2) camDir.y -= PIx2;
-    if (camDir.y < 0) camDir.y += PIx2;
-
-    camPos.x -= (speed * Math.sin(camDir.y));
-    camPos.z -= (speed * Math.cos(camDir.y));
-    camPos.y -= (speed * Math.sin(camDir.x));
-
+  if (k[KEY_SHIFT]) {
+    inputs.speed = 8;
+  }
+  else {
+    inputs.speed = 1;
   }
 
-
+  camera.Update();
 }
+let clouds: MeshInstance[] = []
 let objects: MeshInstance[] = [];
-let pi = 180 / Math.PI
 
-for (let i = 0; i < 10000; i++) {
-  objects.push({
-    model: models.tree,
+for (let i = 0; i < 600; i++) {
+  clouds.push({
+    model: meshes.cloud,
     center: new Vec3(0, 0, 0),
     rotation: new Vec3(Math.random() * 5 / 180 * Math.PI, Math.random() * 360 / 180 * Math.PI, Math.random() * 0),
-    location: new Vec3(Math.random() * 100000 - 50000, 0, Math.random() * 100000 - 50000),
+    location: new Vec3(Math.random() * 20000 - 10000, Math.random() * 100 + 2000, Math.random() * 20000 - 10000),
+    color: new Color(200, 200, 220),
+    scale: 10 * (Math.random() + 1),
+    drawDistance: 1E400,
+  })
+}
+
+for (let i = 0; i < 20000; i++) {
+  objects.push({
+    model: meshes.tree,
+    center: new Vec3(0, 0, 0),
+    rotation: new Vec3(Math.random() * 5 / 180 * Math.PI, Math.random() * 360 / 180 * Math.PI, Math.random() * 0),
+    location: new Vec3(Math.random() * 10000 - 5000, 0, Math.random() * 10000 - 5000),
     color: new Color(Math.random() * 50, Math.random() * 50 + 50, Math.random()),
-    scale: Math.random() * 2 + 1,
+    scale: 5*(Math.random() + 1),
+    drawDistance: 2500*(Math.random() + 1),
   })
 }
 
 for (let i = 0; i < 20; i++) {
   objects.push({
-    model: models.house,
+    model: meshes.house,
     center: new Vec3(0, 0, 0),
     rotation: new Vec3(0, Math.random() * 360, 0),
-    location: new Vec3(Math.random() * 100000 - 50000, 0, Math.random() * 100000 - 50000),
+    location: new Vec3(Math.random() * 10000 - 5000, 0, Math.random() * 10000 - 5000),
     color: new Color(Math.random() * 20 + 90, Math.random() * 20 + 90, Math.random() * 20 + 90),
-    scale: 1,
+    scale: 10,
+    drawDistance: 2500,
   })
+}
+
+function updateSim() {
+  for (let i = 0; i < clouds.length; i++) {
+    let cloud = clouds[i];
+
+    cloud.location.x += 0.5;
+    lockToCamera(cloud.location, 10000);
+
+    const dist = renderer.camera.Distance(cloud.location);
+
+    let f = (1 - Math.min(dist / 10000, 1)) * 220;
+    cloud.color.r = f;
+    cloud.color.g = f;
+    cloud.color.b = f + 20;
+  }
+
+  for (let i = 0; i < objects.length;i++){
+    let obj = objects[i];
+    lockToCamera(obj.location, 5000);
+  }
+}
+
+function lockToCamera(pos:Vec3, radius: number){
+  let cpos = renderer.camera.position;
+
+  if (pos.x > -cpos.x + radius) {
+    pos.x = -cpos.x - radius;
+  }
+
+  if (pos.x < -cpos.x - radius) {
+    pos.x = -cpos.x + radius;
+  }
+
+  if (pos.z > -cpos.z + radius) {
+    pos.z = -cpos.z - radius;
+  }
+
+  if (pos.z < -cpos.z - radius) {
+    pos.z = -cpos.z + radius;
+  }
 }
 
 function render() {
   renderer.startScene(); {
 
-
-    let size = 100000
-
-    for (let i = -size; i <= size; i += 1000) {
-      if (i % 10000 === 0)
-        renderer.color = new Color(25, 75, 0);
-      else
-        renderer.color = new Color(10, 25, 0);
-      renderer.drawLine(new Vec3(i, -1, -size), new Vec3(i, -1, size));
-      renderer.drawLine(new Vec3(-size, -1, i), new Vec3(size, -1, i));
-    }
-
-    for (let i = -size; i <= size; i += 10000) {
-      if (i % 100000 === 0)
-        renderer.color = new Color(255, 255, 255);
-      else
-        renderer.color = new Color(100, 100, 255);
-      renderer.drawLine(new Vec3(i, 20000, -size), new Vec3(i, 20000, size));
-      renderer.drawLine(new Vec3(-size, 20000, i), new Vec3(size, 20000, i));
-    }
-
     renderer.color = new Color(100, 100, 100);
-    renderer.drawMesh(models.house, new Vec3(0, 0, 0), new Vec3(0, 66, 0), new Vec3(-180, 0, 470));
-    renderer.drawMesh(models.runway, new Vec3(0, 0, 0), new Vec3(0, -25, 0), new Vec3(500, 0, 270));
-    renderer.drawMesh(models.tower, new Vec3(0, 0, 0), new Vec3(0, -15, 0), new Vec3(700, 0, 1570));
+    renderer.drawMesh(meshes.house, new Vec3(0, 0, 0), new Vec3(0, 66, 0), new Vec3(-18, 0, 47), 10);
+    //renderer.drawMesh(meshes.runway, new Vec3(0, 0, 0), new Vec3(0, -25, 0), new Vec3(500, 0, 270));
+    renderer.drawMesh(meshes.tower, new Vec3(0, 0, 0), new Vec3(0, -15, 0), new Vec3(70, 0, 157), 10);
 
     for (let i = 0; i < objects.length; i++) {
       renderer.drawMeshInstance(objects[i]);
-      //renderer.color = objects[i].color;
-      //renderer.drawMesh(objects[i].model, objects[i].center, objects[i].rotation, objects[i].location, objects[i].scale);
+    }
+
+    for (let i = 0; i < clouds.length; i++) {
+      renderer.drawMeshInstance(clouds[i]);
+    }
+
+    renderer.color = new Color(0, 255, 0);
+    for (let i = 0; i < dropmesh.length; i++) {
+      let mesh = dropmesh[i];
+      renderer.drawMesh(mesh, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(0, mesh.size * 10, 0), 10);
     }
 
     renderer.color = new Color(0, 0, 255);
-    renderer.drawMesh(models.plane, new Vec3(0, 0, 0), new Vec3(-2, -25, 0), new Vec3(-200, -50, -1270));
-    renderer.drawMesh(models.plane, new Vec3(0, 0, 0), new Vec3(-2, -100, 0), new Vec3(14200, 3000, 24270));
+    //renderer.drawMesh(meshes.plane, new Vec3(0, 0, 0), new Vec3(-2, -25, 0), new Vec3(-200, -50, -1270));
+    //renderer.drawMesh(meshes.plane, new Vec3(0, 0, 0), new Vec3(-2, -100, 0), new Vec3(14200, 3000, 24270));
 
   }
   //ctx.imageSmoothingEnabled = false;
@@ -239,6 +256,7 @@ function main() {
   while (timerSim > 10) {
     timerSim -= 10;
     updateCam();
+    updateSim();
     angle -= 0.001;
   }
   if (timerRender > 10) {

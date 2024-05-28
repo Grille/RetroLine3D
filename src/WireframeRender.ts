@@ -5,50 +5,37 @@ import ProjectionResult from "./ProjectionResult.js";
 import Rectangle from "./Rectangle.js";
 import Mesh from "./Mesh.js";
 import MeshInstance from "./MeshInstance.js";
+import Camera from "./Camera.js";
 
 export default class WireframeRender {
     dstCtx: CanvasRenderingContext2D;
-    dstCanvas: HTMLCanvasElement;
 
     color: Color;
-    canvas: HTMLCanvasElement;
-    ctx: CanvasRenderingContext2D;
+    internalCanvas: HTMLCanvasElement;
+    internalCtx: CanvasRenderingContext2D;
 
-    camPos: Vec3;
-    camRot: Vec3;
-    camSin: Vec3;
-    camCos: Vec3;
+    camera: Camera
 
     depthBuffer: Float32Array;
     colorBuffer: Uint8ClampedArray;
-
-    fov: number;
 
     width: number;
     height: number;
 
     viewport: rectangle;
 
-    eyeZ: number;
-
     constructor(ctx: CanvasRenderingContext2D) {
         this.dstCtx = ctx;
-        this.dstCanvas = ctx.canvas;
 
         this.color = new Color(0, 255, 0);
 
-        this.canvas = document.createElement('canvas');
-
-        let newctx = this.canvas.getContext('2d');
-        if (newctx == null)
+        this.internalCanvas = document.createElement('canvas');
+        let internalCtx = this.internalCanvas.getContext('2d');
+        if (internalCtx == null)
             throw new Error();
-        this.ctx = newctx;
-        this.ctx.imageSmoothingEnabled = false;
+        this.internalCtx = internalCtx;
 
-        this.camPos = new Vec3(-380, -623, 2230)
-        this.camRot = new Vec3(341 / 180 * Math.PI, 347 / 180 * Math.PI, 0);
-        this.camSin = new Vec3(0, 0, 0);
-        this.camCos = new Vec3(0, 0, 0);
+        this.camera = new Camera();
 
         this.depthBuffer = new Float32Array(0);
         this.colorBuffer = new Uint8ClampedArray(0);
@@ -56,11 +43,7 @@ export default class WireframeRender {
         this.width = 0;
         this.height = 0;
 
-        this.eyeZ = 0;
-
-
-        this.fov = 90;
-        this.setSize(this.dstCanvas.width, this.dstCanvas.height);
+        this.setSize(100, 100);
         this.viewport = new Rectangle(0, 0, this.width, this.height);
     }
 
@@ -69,26 +52,18 @@ export default class WireframeRender {
     setSize(width: number, height: number) {
         width |= 0; height |= 0;
 
-        this.depthBuffer = new Float32Array(width * height);
-        this.colorBuffer = new Uint8ClampedArray(width * height * 4);
-
-        this.canvas.width = width;
-        this.canvas.height = height;
         this.width = width;
         this.height = height;
 
-        this.calcEyeZ();
-    }
+        this.depthBuffer = new Float32Array(width * height);
+        this.colorBuffer = new Uint8ClampedArray(width * height * 4);
 
-    setFOV(fov: number) {
-        this.fov = fov;
+        this.internalCanvas.width = width;
+        this.internalCanvas.height = height;
+        this.camera.viewWidth = width;
+        this.camera.viewHeight = height;
 
-        this.calcEyeZ();
-    }
-
-    calcEyeZ() {
-        let rad = (90 - this.fov / 2) * Math.PI / 180;
-        this.eyeZ = -(Math.tan(rad) * (this.width / 2));
+        this.camera.CalcEyeZ();
     }
 
     //transforms vertex of an object
@@ -124,26 +99,26 @@ export default class WireframeRender {
     transformCamPoint(point3D: Vec3): Vec3 {
         let p = point3D.clone();
         let x, y, z;
-        let { camPos, camCos, camSin } = this;
+        let { position: pos, cos, sin } = this.camera;
         // Y
-        p.x += camPos.x; p.y += camPos.y; p.z += camPos.z;
+        p.x += pos.x; p.y += pos.y; p.z += pos.z;
         x = p.x; z = p.z;
-        p.x = x * camCos.y - z * camSin.y
-        p.z = z * camCos.y + x * camSin.y
+        p.x = x * cos.y - z * sin.y
+        p.z = z * cos.y + x * sin.y
         // X
         y = p.y; z = p.z;
-        p.y = y * camCos.x - z * camSin.x;
-        p.z = z * camCos.x + y * camSin.x
+        p.y = y * cos.x - z * sin.x;
+        p.z = z * cos.x + y * sin.x
         // Z
         x = p.x; y = p.y;
-        p.x = x * camCos.z - y * camSin.z
-        p.y = y * camCos.z + x * camSin.z
+        p.x = x * cos.z - y * sin.z
+        p.y = y * cos.z + x * sin.z
 
         return p;
     }
 
     //projection matrix, transform vertex into 2d point
-    projectPoints(inPoint1: Vec3, inPoint2: Vec3): ProjectionResult {
+    ProjectLine(inPoint1: Vec3, inPoint2: Vec3): ProjectionResult {
         let point1 = this.transformCamPoint(inPoint1);
         let point2 = this.transformCamPoint(inPoint2);
 
@@ -171,10 +146,10 @@ export default class WireframeRender {
         }
 
         //project
-        let { eyeZ } = this;
+        let { focalLength: eyeZ } = this.camera;
 
-        point1.z += eyeZ * 0.99;
-        point2.z += eyeZ * 0.99;
+        point1.z += eyeZ * 1;
+        point2.z += eyeZ * 1;
 
         // point1
         let z1 = eyeZ - point1.z;
@@ -197,13 +172,13 @@ export default class WireframeRender {
         let hWidth = this.width / 2, hHeight = this.height / 2;
 
         return new ProjectionResult(
-            new Vec3((-x1 + hWidth) | 0, (y1 + hHeight) | 0, -z1),
-            new Vec3((-x2 + hWidth) | 0, (y2 + hHeight) | 0, -z2),
+            new Vec3((-x1 + hWidth), (y1 + hHeight), -z1),
+            new Vec3((-x2 + hWidth), (y2 + hHeight), -z2),
         );
     }
 
     //test whether object in sight and near enough
-    objectVisible(location: Vec3, model: Mesh, scale: number): boolean {
+    objectVisible(location: Vec3, model: Mesh, scale: number, drawDistance: number): boolean {
 
         let size = model.size * scale;
 
@@ -212,9 +187,9 @@ export default class WireframeRender {
         let dist = Math.sqrt(distZX * distZX + p.y * p.y);
         dist += size
         if (p.z < -size) return false;
-        if (dist > model.drawDist + size) return false;
+        if (dist > drawDistance + size) return false;
 
-        let { eyeZ } = this;
+        let { focalLength: eyeZ } = this.camera;
         dist = p.z + size + eyeZ * 0.99;
 
         let distZ = eyeZ - dist;
@@ -243,11 +218,12 @@ export default class WireframeRender {
 
     //region public
     //Project a group of vertices and draw the lines between them
-    drawMesh(model: Mesh, center: Vec3, rotate: Vec3, translate: Vec3, scale = 1) {
+    drawMesh(model: Mesh, center: Vec3, rotate: Vec3, translate: Vec3, scale = 1, drawDistance = Number.MAX_SAFE_INTEGER) {
         //model.renderDist=20000
-        if (!this.objectVisible(translate, model, scale)) return;
+        if (!this.objectVisible(translate, model, scale, drawDistance)) return;
 
-        let sin = new Vec3(0, 0, 0); let cos = new Vec3(1, 1, 1);
+        let sin = new Vec3(0, 0, 0); 
+        let cos = new Vec3(1, 1, 1);
 
         if (rotate.x !== 0) {
             sin.x = Math.sin(rotate.x);
@@ -272,12 +248,12 @@ export default class WireframeRender {
 
     drawMeshInstance(instance: MeshInstance) {
         this.color = instance.color;
-        this.drawMesh(instance.model, instance.center, instance.rotation, instance.location, instance.scale)
+        this.drawMesh(instance.model, instance.center, instance.rotation, instance.location, instance.scale, instance.drawDistance)
     }
 
     /** Project two vertices and draw a line between them */
     drawLine(start3D: Vec3, end3D: Vec3) {
-        let { point1, point2, discarded } = this.projectPoints(start3D, end3D);
+        let { point1, point2, discarded } = this.ProjectLine(start3D, end3D);
         let { width, height } = this;
 
         if (discarded === true) return;
@@ -360,25 +336,35 @@ export default class WireframeRender {
     }
 
     startScene() {
-        let { camSin, camCos, camRot } = this;
-        camSin.x = Math.sin(camRot.x), camCos.x = Math.cos(camRot.x);
-        camSin.y = Math.sin(camRot.y), camCos.y = Math.cos(camRot.y);
-        camSin.z = Math.sin(camRot.z), camCos.z = Math.cos(camRot.z);
+        this.camera.UpdateSinCos();
 
         let size = this.width * this.height;
         for (let i = 0; i < size; i++) {
             this.depthBuffer[i] = 0;
-            this.colorBuffer[i * 4 + 0] = 0;
-            this.colorBuffer[i * 4 + 1] = 0;
-            this.colorBuffer[i * 4 + 2] = 0;
-            this.colorBuffer[i * 4 + 3] = 255;
         }
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        let h = this.camera.Horizon()
+
+        for (let iy = 0; iy < this.height; iy++) {
+            let y = iy * this.width;
+            let color = iy > h ? new Color(0,40,20) : new Color(0,0,20);
+
+            for (let ix = 0; ix < this.width; ix++) {
+                let idx = (y + ix) * 4;
+                this.colorBuffer[idx + 0] = color.r;
+                this.colorBuffer[idx + 1] = color.g;
+                this.colorBuffer[idx + 2] = color.b;
+                this.colorBuffer[idx + 3] = 255;
+            }
+        }
+
+        this.internalCtx.clearRect(0, 0, this.internalCanvas.width, this.internalCanvas.height);
     }
+
     endScene() {
         let data = new ImageData(this.colorBuffer, this.width, this.height);
-        this.ctx.putImageData(data, 0, 0);
-        this.dstCtx.drawImage(this.canvas, 0, 0, this.canvas.width, this.canvas.height, this.viewport.x, this.viewport.y, this.viewport.width, this.viewport.height);
+        this.internalCtx.putImageData(data, 0, 0);
+        this.dstCtx.drawImage(this.internalCanvas, 0, 0, this.internalCanvas.width, this.internalCanvas.height, this.viewport.x, this.viewport.y, this.viewport.width, this.viewport.height);
     }
 }
 //endregion

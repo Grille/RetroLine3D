@@ -1,50 +1,74 @@
 import Vec3 from "./Vec3.js"
 
+type MeshGroup = { [key: string]: Mesh } ;
+
 export default class Mesh {
 
     public size: number;
     public vertices: Vec3[];
-    public drawDist: number;
     public indices: number[];
 
     constructor() {
         this.size = 0;
-        this.drawDist = 0;
         this.vertices = []
         this.indices = []
     }
 
     public ParseOBJ(text: String) {
+        let group = Mesh.ParseOBJ(text);
+        let keys = Object.keys(group);
+        if (keys.length != 1){
+            throw new Error();
+        }
+        let mesh = group[keys[0]];
+        this.size = mesh.size;
+        this.vertices = mesh.vertices;
+        this.indices = mesh.indices;
+    }
+
+    public static ParseOBJ(text: String): MeshGroup {
         let lines = text.split("\n");
-        let size = 1;
-        let vertices: Vec3[] = [];
-        let indices: number[] = [];
+
+        let mesh = new Mesh();
+        let group: MeshGroup = {
+            _default: mesh
+        }
+
+        let vertices = mesh.vertices;
 
         //parse text
-        for (let i = 0; i < lines.length; i++) {
-            let e = lines[i].split(" ");
+        for (let iLine = 0; iLine < lines.length; iLine++) {
+            let split = lines[iLine].split(" ");
             try {
-                switch (e[0]) {
+                switch (split[0]) {
+                    case "o":
+                        let name = split[1].trim()
+                        mesh = new Mesh();
+                        mesh.vertices = vertices;
+                        group[name] = mesh;
+                        break;
                     case "v":
                         vertices.push(new Vec3(
-                            parseFloat(e[1]),
-                            parseFloat(e[2]),
-                            parseFloat(e[3]),
+                            parseFloat(split[1]),
+                            parseFloat(split[2]),
+                            parseFloat(split[3]),
                         ));
                         break;
                     case "f":
-                        let index0 = parseInt(e[1].split("/", 1)[0]) - 1;
-                        indices.push(index0);
-                        for (let i = 2; i < e.length; i++) {
-                            let index_ = parseInt(e[i].split("/", 1)[0]) - 1;
-                            indices.push(index_);
-                            indices.push(index_);
+                        let index0 = parseInt(split[1].split("/", 1)[0]) - 1;
+                        mesh.indices.push(index0);
+                        for (let i = 2; i < split.length; i++) {
+                            let index_ = parseInt(split[i].split("/", 1)[0]) - 1;
+                            mesh.indices.push(index_);
+                            mesh.indices.push(index_);
                         }
-                        indices.push(index0);
+                        mesh.indices.push(index0);
                         break;
                     case "l":
-                        indices.push(parseInt(e[1]) - 1);
-                        indices.push(parseInt(e[2]) - 1);
+                        for (let i = 1; i < split.length - 1; i++) {
+                            mesh.indices.push(parseInt(split[i + 0]) - 1);
+                            mesh.indices.push(parseInt(split[i + 1]) - 1);
+                        }
                         break;
                 }
             }
@@ -53,9 +77,12 @@ export default class Mesh {
             }
         }
 
-        this.size = size;
-        this.vertices = vertices;
-        this.indices = indices;
+        for (let key in group){
+            group[key].RemoveRedundantLines();
+            group[key].CalcBoundings();
+        }
+
+        return group;
     }
 
     public CalcBoundings() {

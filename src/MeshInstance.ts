@@ -3,7 +3,7 @@ import Mesh from "./Mesh.js"
 import Vec3 from "./Vec3.js"
 
 export default class MeshInstance {
-
+    public drawDistance: number
     public model: Mesh
     public center: Vec3
     public rotation: Vec3
@@ -12,6 +12,7 @@ export default class MeshInstance {
     public scale: number
 
     constructor(mesh: Mesh) {
+        this.drawDistance = Number.MAX_SAFE_INTEGER;
         this.model = mesh;
         this.center = Vec3.ZERO;
         this.rotation = Vec3.ZERO;
@@ -19,5 +20,4 @@ export default class MeshInstance {
         this.color = new Color(1, 1, 1);
         this.scale = 1;
     }
-
 }
