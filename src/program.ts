@@ -1,22 +1,31 @@
-"use strict";
+
+import WireframeRender from "./WireframeRender.js"
+import Vec3 from "./Vec3.js"
+import Color from "./Color.js"
+import Rectangle from "./Rectangle.js";
+import MeshInstance from "./MeshInstance.js";
+import Mesh from "./Mesh.js";
 
 const KEY_UP = 38, KEY_LEFT = 37, KEY_DOWN = 40, KEY_RIGHT = 39, KEY_SHIFT = 16;
 
+var canvas = document.getElementById("canvas") as HTMLCanvasElement;
 let ctx = canvas.getContext("2d");
+if (ctx == null)
+  throw new Error();
 
 let renderer = new WireframeRender(ctx);
 let fpsDate = Date.now();
 let timer = Date.now();
 let timerRender = 0;
 let timerSim = 0;
-let data = JSON.parse(loadText("./example/models.json"));
+let data = JSON.parse(loadText("./assets/models.json"));
 
-let models = {};
+let models: any = {};
 for (let key in data) {
   models[key] = createModel(data[key]);
 }
 let angle = 0;
-let k = []
+let k: number[] = []
 let resulution = 2;
 let lookMode = false;
 renderer.setFOV(90);
@@ -25,7 +34,7 @@ for (let i = 0; i < 256; i++)k[i] = 0;
 window.addEventListener("keydown", (e) => { k[e.keyCode] = 1; /*console.log(e.keyCode);*/ });
 window.addEventListener("keyup", (e) => { k[e.keyCode] = 0 });
 window.addEventListener("mousedown", (e) => {
-  if (lookMode === true){
+  if (lookMode === true) {
     document.exitPointerLock();
   }
   else {
@@ -45,21 +54,22 @@ window.addEventListener("mousemove", (e) => {
 window.onresize = () => {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
-  renderer.setViewport(0, 0, canvas.width, canvas.height);
+
+  renderer.viewport = new Rectangle(0, 0, canvas.width, canvas.height);
   renderer.setSize(canvas.width / resulution, canvas.height / resulution);
+
   ctx.imageSmoothingEnabled = false;
 }
-window.onresize();
+window.onresize(null!);
 
-function createModel(input) {
-  let size = 1;
+function createModel(input: any): Mesh {
   let drawDist = input.drawDist;
-  let vertices = [];
-  let indices = [];
+  let vertices: Vec3[] = [];
+  let indices: number[] = [];
   for (let i = 0; i < input.vertices.length; i += 3) {
-    vertices.push({ x: input.vertices[i + 0], y: input.vertices[i + 1], z: input.vertices[i + 2] })
+    vertices.push(new Vec3(input.vertices[i + 0], input.vertices[i + 1], input.vertices[i + 2]))
   }
-  for (let i1 = 0; i1 < input.lines.length; i1 ++) {
+  for (let i1 = 0; i1 < input.lines.length; i1++) {
     let data = input.lines[i1];
     let type = data[0];
     switch (type) {
@@ -70,27 +80,31 @@ function createModel(input) {
         }
         break;
       case 1:
-        for (let i2 = 1; i2 < data.length-1; i2 += 1) {
+        for (let i2 = 1; i2 < data.length - 1; i2 += 1) {
           indices.push(data[i2 + 0]);
           indices.push(data[i2 + 1]);
         }
         break;
       case 2:
         for (let i2 = 2; i2 < data.length; i2 += 1) {
-          indices.push(data[1 + 0]);
-          indices.push(data[i2 + 1]);
+          indices.push(data[1]);
+          indices.push(data[i2]);
         }
         break;
     }
   }
-  return renderer.fixMesh({
-    size,
-    drawDist,
-    vertices,
-    indices,
-  });
+
+
+
+  var mesh = new Mesh();
+  mesh.drawDist = drawDist;
+  mesh.vertices = vertices;
+  mesh.indices = indices;
+  mesh.CalcBoundings();
+  return mesh;
 }
-function loadText(path) {
+
+function loadText(path: string): string {
   let request = new XMLHttpRequest();
   request.open("GET", path, false);
   request.send(null)
@@ -99,7 +113,7 @@ function loadText(path) {
 
 function updateCam() {
 
-  
+
   const PIx2 = Math.PI * 2;
 
   let { camRot, camSin, camCos, camPos } = renderer;
@@ -114,23 +128,23 @@ function updateCam() {
 
   if (k[KEY_LEFT] === 1 || k[KEY_UP] === 1 || k[KEY_RIGHT] === 1 || k[KEY_DOWN] === 1) {
 
-    let speed =8;
+    let speed = 8;
 
     if (k[KEY_SHIFT] === 1) speed *= 8;
-    
+
     let camDir = camRot.clone();
 
-    if (k[KEY_DOWN] == 1){
+    if (k[KEY_DOWN] == 1) {
       camDir.y += Math.PI;
       camDir.x += Math.PI;
     }
-    
+
     if (camDir.x >= PIx2) camDir.y -= PIx2;
     if (camDir.x < 0) camDir.y += PIx2;
-  
+
     if (camDir.y >= PIx2) camDir.y -= PIx2;
     if (camDir.y < 0) camDir.y += PIx2;
-    
+
     camPos.x -= (speed * Math.sin(camDir.y));
     camPos.z -= (speed * Math.cos(camDir.y));
     camPos.y -= (speed * Math.sin(camDir.x));
@@ -139,32 +153,35 @@ function updateCam() {
 
 
 }
-let objects = [];
-let pi=180 / Math.PI
+let objects: MeshInstance[] = [];
+let pi = 180 / Math.PI
+
 for (let i = 0; i < 10000; i++) {
   objects.push({
     model: models.tree,
     center: new Vec3(0, 0, 0),
-    rotation: new Vec3(Math.random() * 5 / 180 * Math.PI, Math.random() * 360/ 180 * Math.PI, Math.random() * 0),
+    rotation: new Vec3(Math.random() * 5 / 180 * Math.PI, Math.random() * 360 / 180 * Math.PI, Math.random() * 0),
     location: new Vec3(Math.random() * 100000 - 50000, 0, Math.random() * 100000 - 50000),
-    color: { r: Math.random() * 50, g: Math.random() * 50 + 50, b: Math.random(50) },
+    color: new Color(Math.random() * 50, Math.random() * 50 + 50, Math.random()),
     scale: Math.random() * 2 + 1,
   })
 }
+
 for (let i = 0; i < 20; i++) {
   objects.push({
     model: models.house,
     center: new Vec3(0, 0, 0),
     rotation: new Vec3(0, Math.random() * 360, 0),
     location: new Vec3(Math.random() * 100000 - 50000, 0, Math.random() * 100000 - 50000),
-    color: { r: Math.random() * 20 + 90, g: Math.random() * 20 + 90, b: Math.random() * 20 + 90 },
+    color: new Color(Math.random() * 20 + 90, Math.random() * 20 + 90, Math.random() * 20 + 90),
     scale: 1,
   })
 }
+
 function render() {
   renderer.startScene(); {
 
-    
+
     let size = 100000
 
     for (let i = -size; i <= size; i += 1000) {
@@ -191,8 +208,9 @@ function render() {
     renderer.drawMesh(models.tower, new Vec3(0, 0, 0), new Vec3(0, -15, 0), new Vec3(700, 0, 1570));
 
     for (let i = 0; i < objects.length; i++) {
-      renderer.color = objects[i].color;
-      renderer.drawMesh(objects[i].model, objects[i].center, objects[i].rotation, objects[i].location, objects[i].scale);
+      renderer.drawMeshInstance(objects[i]);
+      //renderer.color = objects[i].color;
+      //renderer.drawMesh(objects[i].model, objects[i].center, objects[i].rotation, objects[i].location, objects[i].scale);
     }
 
     renderer.color = new Color(0, 0, 255);
@@ -202,6 +220,9 @@ function render() {
   }
   //ctx.imageSmoothingEnabled = false;
   renderer.endScene();
+
+  if (ctx == null)
+    throw new Error();
 
   ctx.strokeStyle = "#0f0";
   ctx.font = "12px consolas ";
@@ -226,3 +247,5 @@ function main() {
   }
   setTimeout(main, 5);
 }
+
+main();
