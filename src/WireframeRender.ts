@@ -178,9 +178,7 @@ export default class WireframeRender {
     }
 
     //test whether object in sight and near enough
-    objectVisible(location: Vec3, model: Mesh, scale: number, drawDistance: number): boolean {
-
-        let size = model.size * scale;
+    LocationVisible(location: Vec3, size: number, drawDistance: number): boolean {
 
         let p = this.transformCamPoint(location);
         let distZX = Math.sqrt(p.z * p.z + p.x * p.x);
@@ -220,7 +218,7 @@ export default class WireframeRender {
     //Project a group of vertices and draw the lines between them
     drawMesh(model: Mesh, center: Vec3, rotate: Vec3, translate: Vec3, scale = 1, drawDistance = Number.MAX_SAFE_INTEGER) {
         //model.renderDist=20000
-        if (!this.objectVisible(translate, model, scale, drawDistance)) return;
+        if (!this.LocationVisible(translate, model.size * scale, drawDistance)) return;
 
         let sin = new Vec3(0, 0, 0); 
         let cos = new Vec3(1, 1, 1);
