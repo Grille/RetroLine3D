@@ -146,10 +146,10 @@ export default class WireframeRender {
         }
 
         //project
-        let { focalLength: eyeZ } = this.camera;
+        let { eyeZ } = this.camera;
 
-        point1.z += eyeZ * 1;
-        point2.z += eyeZ * 1;
+        point1.z += eyeZ * 0.9999;
+        point2.z += eyeZ * 0.9999;
 
         // point1
         let z1 = eyeZ - point1.z;
@@ -189,7 +189,7 @@ export default class WireframeRender {
         if (p.z < -size) return false;
         if (dist > drawDistance + size) return false;
 
-        let { focalLength: eyeZ } = this.camera;
+        let { eyeZ: eyeZ } = this.camera;
         dist = p.z + size + eyeZ * 0.99;
 
         let distZ = eyeZ - dist;

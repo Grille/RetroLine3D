@@ -9,7 +9,7 @@ export default class Camera {
     public viewHeight: number;
 
     public fov: number;
-    public focalLength: number;
+    public eyeZ: number;
 
     public position: Vec3
     public rot: Vec3
@@ -29,7 +29,7 @@ export default class Camera {
         this.viewHeight = 100;
 
         this.fov = 90;
-        this.focalLength = 0;
+        this.eyeZ = 0;
 
         this.CalcEyeZ();
     }
@@ -62,13 +62,13 @@ export default class Camera {
 
     CalcEyeZ() {
         let rad = (90 - this.fov / 2) * Math.PI / 180;
-        this.focalLength = -(Math.tan(rad) * (this.viewWidth / 2));
+        this.eyeZ = -(Math.tan(rad) * (this.viewWidth / 2));
     }
 
     public Horizon(){
         let pitch = this.rot.x;
         let hheight = this.viewHeight / 2;
-        return hheight + (-this.focalLength) * Math.tan(pitch);
+        return hheight + (-this.eyeZ) * Math.tan(pitch);
     }
 
     public Distance(pos: Vec3){

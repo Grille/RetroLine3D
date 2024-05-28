@@ -5,6 +5,7 @@
         "outDir": "out/src",
         "rootDir": "src",
         "strict": true,
+        "alwaysStrict": true,
         "strictFunctionTypes": true,
         "noImplicitAny": true,
         "noImplicitReturns": true,
