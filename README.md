@@ -1,5 +1,6 @@
 # RetroLine3D
-Small experiment of rendering 3d vector graphics from scratch.
+Experiment of rendering 3d vector graphics from scratch.\
+All rendering/calculations are done in vanilla typescript, a 2d canvas is used only to display the final image.
 
 ## Demo
 [\[Try Online Demo\] https://grille.github.io/RetroLine3D](https://grille.github.io/RetroLine3D/index.html)
