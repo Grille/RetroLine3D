@@ -1,28 +1,33 @@
 import Vec3 from "./Vec3.js";
 import Color from "./Color.js";
-import rectangle from "./Rectangle.js";
 import ProjectionResult from "./ProjectionResult.js";
 import Rectangle from "./Rectangle.js";
 import Mesh from "./Mesh.js";
 import MeshInstance from "./MeshInstance.js";
 import Camera from "./Camera.js";
+import WireframeRendererDiagnostics from "./WireframeRendererDiagnostics.js";
 
-export default class WireframeRender {
-    dstCtx: CanvasRenderingContext2D;
+export default class WireframeRenderer {
+    private depthBuffer: Float32Array;
+    private colorBuffer: Uint8ClampedArray;
 
-    color: Color;
-    internalCanvas: HTMLCanvasElement;
-    internalCtx: CanvasRenderingContext2D;
+    private internalCanvas: HTMLCanvasElement;
+    private internalCtx: CanvasRenderingContext2D;
 
-    camera: Camera
+    public dstCtx: CanvasRenderingContext2D;
 
-    depthBuffer: Float32Array;
-    colorBuffer: Uint8ClampedArray;
+    public color: Color;
 
-    width: number;
-    height: number;
+    public groundColor: Color;
+    public skyColor: Color;
 
-    viewport: rectangle;
+    public camera: Camera
+
+    public width: number;
+    public height: number;
+
+    public viewport: Rectangle;
+    public diagnostics: WireframeRendererDiagnostics
 
     constructor(ctx: CanvasRenderingContext2D) {
         this.dstCtx = ctx;
@@ -35,21 +40,26 @@ export default class WireframeRender {
             throw new Error();
         this.internalCtx = internalCtx;
 
+        this.diagnostics = new WireframeRendererDiagnostics();
+
         this.camera = new Camera();
 
         this.depthBuffer = new Float32Array(0);
         this.colorBuffer = new Uint8ClampedArray(0);
 
+        this.groundColor = new Color(0, 40, 20);
+        this.skyColor = new Color(0, 0, 20);
+
         this.width = 0;
         this.height = 0;
 
-        this.setSize(100, 100);
+        this.SetSize(100, 100);
         this.viewport = new Rectangle(0, 0, this.width, this.height);
     }
 
     //region private
     //resize canvas and use resolution
-    setSize(width: number, height: number) {
+    SetSize(width: number, height: number) {
         width |= 0; height |= 0;
 
         this.width = width;
@@ -67,9 +77,9 @@ export default class WireframeRender {
     }
 
     //transforms vertex of an object
-    transformVertex(point3D: Vec3, center: Vec3, sin: Vec3, cos: Vec3, translate: Vec3, scale: number): Vec3 {
+    TransformVertex(point3D: Vec3, center: Vec3, sin: Vec3, cos: Vec3, translate: Vec3, scale: number): Vec3 {
 
-        let p = point3D.clone()
+        let p = point3D.Clone()
         let x, y, z;
 
         p.x *= scale; p.y *= scale; p.z *= scale;
@@ -96,8 +106,8 @@ export default class WireframeRender {
     }
 
     //transform vertex relative to camera
-    transformCamPoint(point3D: Vec3): Vec3 {
-        let p = point3D.clone();
+    TransformVertexByCamera(point3D: Vec3): Vec3 {
+        let p = point3D.Clone();
         let x, y, z;
         let { position: pos, cos, sin } = this.camera;
         // Y
@@ -119,8 +129,8 @@ export default class WireframeRender {
 
     //projection matrix, transform vertex into 2d point
     ProjectLine(inPoint1: Vec3, inPoint2: Vec3): ProjectionResult {
-        let point1 = this.transformCamPoint(inPoint1);
-        let point2 = this.transformCamPoint(inPoint2);
+        let point1 = this.TransformVertexByCamera(inPoint1);
+        let point2 = this.TransformVertexByCamera(inPoint2);
 
         //clampZ
         {
@@ -148,8 +158,8 @@ export default class WireframeRender {
         //project
         let { eyeZ } = this.camera;
 
-        point1.z += eyeZ * 0.9999;
-        point2.z += eyeZ * 0.9999;
+        point1.z += eyeZ * 0.99;
+        point2.z += eyeZ * 0.99;
 
         // point1
         let z1 = eyeZ - point1.z;
@@ -180,14 +190,14 @@ export default class WireframeRender {
     //test whether object in sight and near enough
     LocationVisible(location: Vec3, size: number, drawDistance: number): boolean {
 
-        let p = this.transformCamPoint(location);
+        let p = this.TransformVertexByCamera(location);
         let distZX = Math.sqrt(p.z * p.z + p.x * p.x);
         let dist = Math.sqrt(distZX * distZX + p.y * p.y);
         dist += size
         if (p.z < -size) return false;
         if (dist > drawDistance + size) return false;
 
-        let { eyeZ: eyeZ } = this.camera;
+        let { eyeZ } = this.camera;
         dist = p.z + size + eyeZ * 0.99;
 
         let distZ = eyeZ - dist;
@@ -216,45 +226,52 @@ export default class WireframeRender {
 
     //region public
     //Project a group of vertices and draw the lines between them
-    drawMesh(model: Mesh, center: Vec3, rotate: Vec3, translate: Vec3, scale = 1, drawDistance = Number.MAX_SAFE_INTEGER) {
-        //model.renderDist=20000
-        if (!this.LocationVisible(translate, model.size * scale, drawDistance)) return;
+    DrawMesh(mesh: Mesh, center: Vec3, rotate: Vec3, translate: Vec3, scale = 1, drawDistance = Number.MAX_SAFE_INTEGER) {
+        let instance = new MeshInstance(mesh);
+        instance.center = center;
+        instance.rotation = rotate;
+        instance.location = translate;
+        instance.scale = scale;
+        instance. drawDistance = drawDistance;
+        instance.UpdateSinCos();
 
-        let sin = new Vec3(0, 0, 0); 
-        let cos = new Vec3(1, 1, 1);
-
-        if (rotate.x !== 0) {
-            sin.x = Math.sin(rotate.x);
-            cos.x = Math.cos(rotate.x);
-        }
-        if (rotate.y !== 0) {
-            sin.y = Math.sin(rotate.y);
-            cos.y = Math.cos(rotate.y);
-        }
-        if (rotate.z !== 0) {
-            sin.z = Math.sin(rotate.z);
-            cos.z = Math.cos(rotate.z);
-        }
-
-        let { vertices, indices } = model;
-        for (let i = 0; i < indices.length; i += 2) {
-            let vertex1 = this.transformVertex(vertices[indices[i + 0]], center, sin, cos, translate, scale);
-            let vertex2 = this.transformVertex(vertices[indices[i + 1]], center, sin, cos, translate, scale);
-            this.drawLine(vertex1, vertex2);
-        }
+        this.DrawMeshInstance(instance);
     }
 
-    drawMeshInstance(instance: MeshInstance) {
+    DrawMeshInstance(instance: MeshInstance) {
+        this.diagnostics.objectDrawCalls += 1;
+        if (!this.LocationVisible(instance.location, instance.model.size * instance.scale, instance.drawDistance)) {
+            this.diagnostics.objectDrawCallsDiscarded += 1;
+            return;
+        }
+
+        let sin = instance.sin; 
+        let cos = instance.cos;
+
         this.color = instance.color;
-        this.drawMesh(instance.model, instance.center, instance.rotation, instance.location, instance.scale, instance.drawDistance)
+
+        let { vertices, indices } = instance.model;
+        for (let i = 0; i < indices.length; i += 2) {
+            let vertex1 = this.TransformVertex(vertices[indices[i + 0]], instance.center, sin, cos, instance.location, instance.scale);
+            let vertex2 = this.TransformVertex(vertices[indices[i + 1]], instance.center, sin, cos, instance.location, instance.scale);
+            this.DrawLine(vertex1, vertex2);
+        }
+
+
+        //this.DrawMesh(instance.model, instance.center, instance.rotation, instance.location, instance.scale, instance.drawDistance)
     }
 
     /** Project two vertices and draw a line between them */
-    drawLine(start3D: Vec3, end3D: Vec3) {
+    DrawLine(start3D: Vec3, end3D: Vec3) {
+        this.diagnostics.lineDrawCalls += 1;
+
         let { point1, point2, discarded } = this.ProjectLine(start3D, end3D);
         let { width, height } = this;
 
-        if (discarded === true) return;
+        if (discarded === true) {
+            this.diagnostics.lineDrawCallsDiscarded += 1;
+            return;
+        }
 
         //clamp to screen
         {
@@ -311,7 +328,10 @@ export default class WireframeRender {
         }
 
         //discard out of screen
-        if (point1.x === point2.x && point1.y === point2.y) return;
+        if (point1.x === point2.x && point1.y === point2.y) {
+            this.diagnostics.lineDrawCallsDiscarded += 1;
+            return;
+        }
 
         //draw line
         let distX = (point2.x - point1.x)
@@ -333,7 +353,9 @@ export default class WireframeRender {
         }
     }
 
-    startScene() {
+    StartScene() {
+        this.diagnostics.Start();
+        
         this.camera.UpdateSinCos();
 
         let size = this.width * this.height;
@@ -345,7 +367,7 @@ export default class WireframeRender {
 
         for (let iy = 0; iy < this.height; iy++) {
             let y = iy * this.width;
-            let color = iy > h ? new Color(0,40,20) : new Color(0,0,20);
+            let color = iy > h ? this.groundColor : this.skyColor;
 
             for (let ix = 0; ix < this.width; ix++) {
                 let idx = (y + ix) * 4;
@@ -359,10 +381,12 @@ export default class WireframeRender {
         this.internalCtx.clearRect(0, 0, this.internalCanvas.width, this.internalCanvas.height);
     }
 
-    endScene() {
+    EndScene() {
         let data = new ImageData(this.colorBuffer, this.width, this.height);
         this.internalCtx.putImageData(data, 0, 0);
         this.dstCtx.drawImage(this.internalCanvas, 0, 0, this.internalCanvas.width, this.internalCanvas.height, this.viewport.x, this.viewport.y, this.viewport.width, this.viewport.height);
+
+        this.diagnostics.End();
     }
 }
 //endregion

@@ -5,6 +5,7 @@ export default class Meshes {
     public tree: Mesh
     public house: Mesh
     public tower: Mesh
+    public grass: Mesh
 
     public userdrop: Mesh[]
 
@@ -15,6 +16,7 @@ export default class Meshes {
         this.tower = meshes_obj.atc;
         this.house = meshes_obj.house;
         this.tree = meshes_obj.tree;
+        this.grass = meshes_obj.grass;
 
         this.userdrop = [];
 
