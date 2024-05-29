@@ -1,10 +1,6 @@
 # RetroLine3D
-Small experiment for the development of a 3d projection matrix.<br>
-Use wasd & shift to navigate <br>
-Try demo: https://grille.github.io/RetroLine3D/.<br>
-<br>
+Small experiment of rendering 3d vector graphics from scratch.
 
-![Imgur](https://imgur.com/aeUXKpT.png)
-
-
-3D Rendering with Linear Algebra
+## Demo
+[\[Try Online Demo\] https://grille.github.io/RetroLine3D](https://grille.github.io/RetroLine3D/index.html)
+![AnimationVector3](https://github.com/Grille/RetroLine3D/assets/26384012/a0192c26-a4de-4b94-acc2-4e028eb95151)
