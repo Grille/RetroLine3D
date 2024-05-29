@@ -9,5 +9,24 @@ export default class MeshInstance {
         this.location = Vec3.ZERO;
         this.color = new Color(1, 1, 1);
         this.scale = 1;
+        this.sin = new Vec3(0, 0, 0);
+        this.cos = new Vec3(1, 1, 1);
+    }
+    UpdateSinCos() {
+        let rotate = this.rotation;
+        let sin = this.sin;
+        let cos = this.cos;
+        if (rotate.x !== 0) {
+            sin.x = Math.sin(rotate.x);
+            cos.x = Math.cos(rotate.x);
+        }
+        if (rotate.y !== 0) {
+            sin.y = Math.sin(rotate.y);
+            cos.y = Math.cos(rotate.y);
+        }
+        if (rotate.z !== 0) {
+            sin.z = Math.sin(rotate.z);
+            cos.z = Math.cos(rotate.z);
+        }
     }
 }

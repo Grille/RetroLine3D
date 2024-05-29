@@ -1,4 +1,4 @@
-import RenderingSetup from "./Page.js";
+import RenderingSetup from "./RenderingSetup.js";
 import Meshes from "./Meshes.js";
 import Scene from "./Scene.js";
 import Color from "../Color.js";
@@ -7,9 +7,13 @@ let rendering = new RenderingSetup();
 let meshes = new Meshes();
 let scene = new Scene();
 scene.Setup(meshes);
+let date = Date.now();
 function LogicTick() {
-    rendering.LogicTick();
-    scene.LogicTick(rendering.camera);
+    let now = Date.now();
+    let delta = (now - date) / 1000;
+    date = now;
+    rendering.LogicTick(delta);
+    scene.LogicTick(delta, rendering.camera);
 }
 function RenderTick() {
     rendering.Begin();
@@ -17,5 +21,9 @@ function RenderTick() {
     rendering.RenderMeshes(meshes.userdrop, COLOR_LIME);
     rendering.End();
 }
-setInterval(LogicTick, 10);
-setInterval(RenderTick, 10);
+function Tick() {
+    LogicTick();
+    RenderTick();
+    requestAnimationFrame(Tick);
+}
+Tick();

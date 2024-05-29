@@ -8,3 +8,11 @@ canvas {
     position: absolute;
     background: #000;
 }
+
+#info {
+    position: absolute;
+    background: #1a283d83;
+    color: rgb(218, 246, 255);
+    font-family: 'Courier New', Courier, monospace;
+    font: optional;
+}

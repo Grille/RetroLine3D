@@ -53,25 +53,22 @@ class Camera {
         const inputs = this.inputs;
         const forward = new Vec3(Math.sin(this.rot.y), this.rot.x, Math.cos(this.rot.y));
         const right = new Vec3(Math.cos(this.rot.y), 0, -Math.sin(this.rot.y));
-        forward.normalize();
-        right.normalize();
+        forward.Normalize();
+        right.Normalize();
         const movement = new Vec3(0, 0, 0);
         if (inputs.moveUp) {
-            movement.scaleAndAdd(forward, -inputs.speed);
+            movement.ScaleAndAdd(forward, -inputs.speed);
         }
         if (inputs.moveDown) {
-            movement.scaleAndAdd(forward, inputs.speed);
+            movement.ScaleAndAdd(forward, inputs.speed);
         }
         if (inputs.moveLeft) {
-            movement.scaleAndAdd(right, inputs.speed);
+            movement.ScaleAndAdd(right, inputs.speed);
         }
         if (inputs.moveRight) {
-            movement.scaleAndAdd(right, -inputs.speed);
+            movement.ScaleAndAdd(right, -inputs.speed);
         }
-        this.position.add(movement);
-        if (this.position.y > 0) {
-            this.position.y = 0;
-        }
+        this.position.Add(movement);
     }
     RotateByMouse(x, y) {
         this.rot.x -= y * 0.1;
