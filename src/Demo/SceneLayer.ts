@@ -1,4 +1,5 @@
 import Camera from "../Camera.js";
+import Mesh from "../Mesh.js";
 import MeshInstance from "../MeshInstance.js";
 import Vec3 from "../Vec3.js";
 
@@ -11,6 +12,15 @@ export default class SceneLayer {
         this.radius = radius
         this.size = radius * 2;
         this.items = [];
+    }
+
+    public CreateInstance(mesh: Mesh){
+        let instance = new MeshInstance(mesh);
+        instance.location = this.GetLocation();
+
+        this.Push(instance);
+
+        return instance;
     }
 
     public Push(item: MeshInstance){

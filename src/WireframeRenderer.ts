@@ -158,8 +158,8 @@ export default class WireframeRenderer {
         //project
         let { eyeZ } = this.camera;
 
-        point1.z += eyeZ * 0.99;
-        point2.z += eyeZ * 0.99;
+        point1.z += eyeZ * 0.9999;
+        point2.z += eyeZ * 0.9999;
 
         // point1
         let z1 = eyeZ - point1.z;
@@ -187,7 +187,7 @@ export default class WireframeRenderer {
         );
     }
 
-    //test whether object in sight and near enough
+    //test whether object is in sight and near enough
     LocationVisible(location: Vec3, size: number, drawDistance: number): boolean {
 
         let p = this.TransformVertexByCamera(location);
@@ -198,7 +198,7 @@ export default class WireframeRenderer {
         if (dist > drawDistance + size) return false;
 
         let { eyeZ } = this.camera;
-        dist = p.z + size + eyeZ * 0.99;
+        dist = p.z + size + eyeZ * 0.9999;
 
         let distZ = eyeZ - dist;
         let x, y, m;
@@ -226,19 +226,7 @@ export default class WireframeRenderer {
 
     //region public
     //Project a group of vertices and draw the lines between them
-    DrawMesh(mesh: Mesh, center: Vec3, rotate: Vec3, translate: Vec3, scale = 1, drawDistance = Number.MAX_SAFE_INTEGER) {
-        let instance = new MeshInstance(mesh);
-        instance.center = center;
-        instance.rotation = rotate;
-        instance.location = translate;
-        instance.scale = scale;
-        instance. drawDistance = drawDistance;
-        instance.UpdateSinCos();
-
-        this.DrawMeshInstance(instance);
-    }
-
-    DrawMeshInstance(instance: MeshInstance) {
+    DrawMesh(instance: MeshInstance) {
         this.diagnostics.objectDrawCalls += 1;
         if (!this.LocationVisible(instance.location, instance.model.size * instance.scale, instance.drawDistance)) {
             this.diagnostics.objectDrawCallsDiscarded += 1;
@@ -256,9 +244,6 @@ export default class WireframeRenderer {
             let vertex2 = this.TransformVertex(vertices[indices[i + 1]], instance.center, sin, cos, instance.location, instance.scale);
             this.DrawLine(vertex1, vertex2);
         }
-
-
-        //this.DrawMesh(instance.model, instance.center, instance.rotation, instance.location, instance.scale, instance.drawDistance)
     }
 
     /** Project two vertices and draw a line between them */

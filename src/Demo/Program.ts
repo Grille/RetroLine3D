@@ -24,8 +24,14 @@ function LogicTick() {
 
 function RenderTick() {
     rendering.Begin();
-    rendering.RenderScene(scene);
-    rendering.RenderMeshes(meshes.userdrop, COLOR_LIME);
+    if (meshes.userdrop.length > 0) {
+        rendering.cameraRestricted = false;
+        rendering.RenderMeshes(meshes.userdrop, COLOR_LIME);
+    }
+    else {
+        rendering.cameraRestricted = true;
+        rendering.RenderScene(scene);
+    }
     rendering.End();
 }
 
