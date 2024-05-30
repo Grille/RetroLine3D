@@ -2,7 +2,6 @@ import Vec3 from "./Vec3.js";
 import Color from "./Color.js";
 import ProjectionResult from "./ProjectionResult.js";
 import Rectangle from "./Rectangle.js";
-import MeshInstance from "./MeshInstance.js";
 import Camera from "./Camera.js";
 import WireframeRendererDiagnostics from "./WireframeRendererDiagnostics.js";
 export default class WireframeRenderer {
@@ -126,8 +125,8 @@ export default class WireframeRenderer {
         }
         //project
         let { eyeZ } = this.camera;
-        point1.z += eyeZ * 0.99;
-        point2.z += eyeZ * 0.99;
+        point1.z += eyeZ * 0.9999;
+        point2.z += eyeZ * 0.9999;
         // point1
         let z1 = eyeZ - point1.z;
         // get X
@@ -147,7 +146,7 @@ export default class WireframeRenderer {
         let hWidth = this.width / 2, hHeight = this.height / 2;
         return new ProjectionResult(new Vec3((-x1 + hWidth), (y1 + hHeight), -z1), new Vec3((-x2 + hWidth), (y2 + hHeight), -z2));
     }
-    //test whether object in sight and near enough
+    //test whether object is in sight and near enough
     LocationVisible(location, size, drawDistance) {
         let p = this.TransformVertexByCamera(location);
         let distZX = Math.sqrt(p.z * p.z + p.x * p.x);
@@ -158,7 +157,7 @@ export default class WireframeRenderer {
         if (dist > drawDistance + size)
             return false;
         let { eyeZ } = this.camera;
-        dist = p.z + size + eyeZ * 0.99;
+        dist = p.z + size + eyeZ * 0.9999;
         let distZ = eyeZ - dist;
         let x, y, m;
         // test X
@@ -184,17 +183,7 @@ export default class WireframeRenderer {
     //endregion
     //region public
     //Project a group of vertices and draw the lines between them
-    DrawMesh(mesh, center, rotate, translate, scale = 1, drawDistance = Number.MAX_SAFE_INTEGER) {
-        let instance = new MeshInstance(mesh);
-        instance.center = center;
-        instance.rotation = rotate;
-        instance.location = translate;
-        instance.scale = scale;
-        instance.drawDistance = drawDistance;
-        instance.UpdateSinCos();
-        this.DrawMeshInstance(instance);
-    }
-    DrawMeshInstance(instance) {
+    DrawMesh(instance) {
         this.diagnostics.objectDrawCalls += 1;
         if (!this.LocationVisible(instance.location, instance.model.size * instance.scale, instance.drawDistance)) {
             this.diagnostics.objectDrawCallsDiscarded += 1;
@@ -209,7 +198,6 @@ export default class WireframeRenderer {
             let vertex2 = this.TransformVertex(vertices[indices[i + 1]], instance.center, sin, cos, instance.location, instance.scale);
             this.DrawLine(vertex1, vertex2);
         }
-        //this.DrawMesh(instance.model, instance.center, instance.rotation, instance.location, instance.scale, instance.drawDistance)
     }
     /** Project two vertices and draw a line between them */
     DrawLine(start3D, end3D) {

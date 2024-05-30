@@ -1,6 +1,6 @@
 import WireframeRenderer from "../WireframeRenderer.js";
 import Rectangle from "../Rectangle.js";
-import Vec3 from "../Vec3.js";
+import MeshInstance from "../MeshInstance.js";
 const KEY_SHIFT = 16;
 const Key_CTRL = 17;
 const Key_ALT = 18;
@@ -18,6 +18,8 @@ export default class RenderingSetup {
         this.renderer = new WireframeRenderer(this.ctx);
         this.camera = this.renderer.camera;
         this.resolution = 0.5;
+        this.cameraSpeed = 1;
+        this.cameraRestricted = true;
         this.keyDown = [];
         this.RegisterKeyEvents();
         this.RegisterCameraEvents();
@@ -26,19 +28,39 @@ export default class RenderingSetup {
     RegisterResizeEvents() {
         this.canvas.onwheel = (e) => {
             let delta = e.deltaY;
-            if (delta > 0) {
-                this.resolution *= 0.5;
+            if (this.keyDown[KEY_SHIFT]) {
+                if (delta > 0) {
+                    this.cameraSpeed *= 0.5;
+                }
+                else {
+                    this.cameraSpeed /= 0.5;
+                }
+                const max = 1024;
+                const min = 0.0625;
+                if (this.cameraSpeed > max) {
+                    this.cameraSpeed = max;
+                }
+                if (this.cameraSpeed < min) {
+                    this.cameraSpeed = min;
+                }
             }
             else {
-                this.resolution /= 0.5;
+                if (delta > 0) {
+                    this.resolution *= 0.5;
+                }
+                else {
+                    this.resolution /= 0.5;
+                }
+                const max = 1;
+                const min = 0.0625;
+                if (this.resolution > max) {
+                    this.resolution = max;
+                }
+                if (this.resolution < min) {
+                    this.resolution = min;
+                }
+                this.UpdateViewport();
             }
-            const max = 1;
-            const min = 0.0625;
-            if (this.resolution > max)
-                this.resolution = max;
-            if (this.resolution < min)
-                this.resolution = min;
-            this.UpdateViewport();
         };
         window.onresize = () => {
             this.canvas.width = window.innerWidth;
@@ -89,18 +111,15 @@ export default class RenderingSetup {
         inputs.moveUp = k[KEY_UP] || k[KEY_W];
         inputs.moveRight = k[KEY_RIGHT] || k[KEY_D];
         inputs.moveDown = k[KEY_DOWN] || k[KEY_S];
-        if (k[KEY_SHIFT]) {
-            inputs.speed = 10000 * delta;
-        }
-        else {
-            inputs.speed = 200 * delta;
-        }
+        inputs.speed = this.cameraSpeed * 100 * delta;
         camera.Update();
-        if (camera.position.y > 0) {
-            camera.position.y = 0;
-        }
-        if (camera.position.y < -2200) {
-            camera.position.y = -2200;
+        if (this.cameraRestricted) {
+            if (camera.position.y > 0) {
+                camera.position.y = 0;
+            }
+            if (camera.position.y < -2200) {
+                camera.position.y = -2200;
+            }
         }
     }
     Begin() {
@@ -109,7 +128,12 @@ export default class RenderingSetup {
     End() {
         this.renderer.EndScene();
         let debuginfo = this.renderer.diagnostics;
+        let cpos = this.camera.position;
         this.debugbox.innerText = `
+        Info:
+        - Position <${-cpos.x | 0},${-cpos.y | 0},${-cpos.z | 0}>
+        - Speed ${this.cameraSpeed}
+
         Performance:
         - fps ${debuginfo.loggedFpsCount}
         - delta ${debuginfo.loggedDelta}ms
@@ -124,7 +148,6 @@ export default class RenderingSetup {
         `;
     }
     RenderScene(scene) {
-        let renderer = this.renderer;
         this.DrawSceneLayer(scene.clouds);
         this.DrawSceneLayer(scene.objects);
         this.DrawSceneLayer(scene.groundcover);
@@ -133,7 +156,7 @@ export default class RenderingSetup {
         let items = layer.items;
         let renderer = this.renderer;
         for (let i = 0; i < items.length; i++) {
-            renderer.DrawMeshInstance(items[i]);
+            renderer.DrawMesh(items[i]);
         }
     }
     RenderMeshes(meshes, color) {
@@ -141,7 +164,10 @@ export default class RenderingSetup {
         renderer.color = color;
         for (let i = 0; i < meshes.length; i++) {
             let mesh = meshes[i];
-            renderer.DrawMesh(mesh, new Vec3(0, 0, 0), new Vec3(0, 0, 0), new Vec3(0, mesh.size * 10, 0), 10);
+            let instance = new MeshInstance(mesh);
+            instance.color = color;
+            instance.scale = 10;
+            renderer.DrawMesh(instance);
         }
     }
 }

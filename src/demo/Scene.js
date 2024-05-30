@@ -10,25 +10,20 @@ export default class Scene {
     }
     Setup(meshes) {
         for (let i = 0; i < 600; i++) {
-            let instance = new MeshInstance(meshes.cloud);
+            let instance = this.clouds.CreateInstance(meshes.cloud);
             instance.rotation = new Vec3(Math.random() * 5 / 180 * Math.PI, Math.random() * 360 / 180 * Math.PI, Math.random() * 0);
-            instance.location = this.clouds.GetLocation();
             instance.location.y = Math.random() * 100 + 2000;
             instance.color = new Color(200, 200, 220);
             instance.scale = 10 * (Math.random() + 1);
             instance.drawDistance = 1E400;
-            instance.UpdateSinCos();
-            this.clouds.Push(instance);
         }
         for (let i = 0; i < 20000; i++) {
-            let instance = new MeshInstance(meshes.tree);
+            let instance = this.objects.CreateInstance(meshes.tree);
             instance.rotation = new Vec3(Math.random() * 5 / 180 * Math.PI, Math.random() * 360 / 180 * Math.PI, Math.random() * 0);
-            instance.location = this.objects.GetLocation();
             instance.color = new Color(Math.random() * 50, Math.random() * 50 + 50, Math.random());
             instance.scale = 5 * (Math.random() + 1);
             instance.drawDistance = 2500 * (Math.random() + 1);
             instance.UpdateSinCos();
-            this.objects.Push(instance);
         }
         for (let i = 0; i < 20; i++) {
             let instance = new MeshInstance(meshes.house);

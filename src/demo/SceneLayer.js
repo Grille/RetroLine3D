@@ -1,9 +1,16 @@
+import MeshInstance from "../MeshInstance.js";
 import Vec3 from "../Vec3.js";
 export default class SceneLayer {
     constructor(radius) {
         this.radius = radius;
         this.size = radius * 2;
         this.items = [];
+    }
+    CreateInstance(mesh) {
+        let instance = new MeshInstance(mesh);
+        instance.location = this.GetLocation();
+        this.Push(instance);
+        return instance;
     }
     Push(item) {
         this.items.push(item);
