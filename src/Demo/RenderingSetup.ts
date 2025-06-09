@@ -42,7 +42,8 @@ export default class RenderingSetup {
         this.camera = this.renderer.camera;
         this.resolution = 0.5;
 
-        this.cameraSpeed = 1;
+        this.camera.position.y = 10;
+        this.cameraSpeed = 32;
         this.cameraRestricted = true;
 
         this.keyDown = []
@@ -55,7 +56,7 @@ export default class RenderingSetup {
     private RegisterResizeEvents() {
         this.canvas.onwheel = (e) => {
             let delta = e.deltaY;
-            if (this.keyDown[KEY_SHIFT]) {
+            if (!this.keyDown[KEY_SHIFT]) {
                 if (delta > 0) {
                     this.cameraSpeed *= 0.5;
                 }
@@ -63,7 +64,7 @@ export default class RenderingSetup {
                     this.cameraSpeed /= 0.5;
                 }
 
-                const max = 1024;
+                const max = 4096;
                 const min = 0.0625;
 
                 if (this.cameraSpeed > max) {
@@ -81,7 +82,7 @@ export default class RenderingSetup {
                     this.resolution /= 0.5;
                 }
 
-                const max = 1;
+                const max = 8;
                 const min = 0.0625;
 
                 if (this.resolution > max) {
@@ -151,16 +152,16 @@ export default class RenderingSetup {
         inputs.moveRight = k[KEY_RIGHT] || k[KEY_D];
         inputs.moveDown = k[KEY_DOWN] || k[KEY_S];
 
-        inputs.speed = this.cameraSpeed * 100 * delta;
+        inputs.speed = this.cameraSpeed * delta;
 
         camera.Update();
 
         if (this.cameraRestricted) {
-            if (camera.position.y > 0) {
+            if (camera.position.y < 0) {
                 camera.position.y = 0;
             }
-            if (camera.position.y < -2200) {
-                camera.position.y = -2200;
+            if (camera.position.y > 500) {
+                camera.position.y = 500;
             }
         }
     }
@@ -176,12 +177,13 @@ export default class RenderingSetup {
         let cpos = this.camera.position;
         this.debugbox.innerText = `
         Info:
-        - Position <${-cpos.x|0},${-cpos.y|0},${-cpos.z|0}>
-        - Speed ${this.cameraSpeed}
+        - Position <${cpos.x|0},${cpos.y|0},${cpos.z|0}>
+        - Speed ${this.cameraSpeed}m/s
 
         Performance:
         - fps ${debuginfo.loggedFpsCount}
         - delta ${debuginfo.loggedDelta}ms
+        - resolution x${this.resolution} <${this.renderer.width},${this.renderer.height}>px
 
         Draw Calls:
         - objects ${debuginfo.objectDrawCalls}

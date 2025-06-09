@@ -1,3 +1,5 @@
+import { removeEmitHelper } from "../node_modules/typescript/lib/typescript";
+
 export default class WireframeRendererDiagnostics {
     private lastLogTime: number;
     private lastStartTime: number;

@@ -58,6 +58,7 @@ export default class WireframeRenderer {
     }
 
     //region private
+    
     //resize canvas and use resolution
     SetSize(width: number, height: number) {
         width |= 0; height |= 0;
@@ -107,11 +108,12 @@ export default class WireframeRenderer {
 
     //transform vertex relative to camera
     TransformVertexByCamera(point3D: Vec3): Vec3 {
+        
         let p = point3D.Clone();
         let x, y, z;
         let { position: pos, cos, sin } = this.camera;
         // Y
-        p.x += pos.x; p.y += pos.y; p.z += pos.z;
+        p.x -= pos.x; p.y -= pos.y; p.z -= pos.z;
         x = p.x; z = p.z;
         p.x = x * cos.y - z * sin.y
         p.z = z * cos.y + x * sin.y
@@ -194,6 +196,8 @@ export default class WireframeRenderer {
         let distZX = Math.sqrt(p.z * p.z + p.x * p.x);
         let dist = Math.sqrt(distZX * distZX + p.y * p.y);
         dist += size
+
+        // behind camera
         if (p.z < -size) return false;
         if (dist > drawDistance + size) return false;
 
@@ -225,6 +229,7 @@ export default class WireframeRenderer {
     //endregion
 
     //region public
+
     //Project a group of vertices and draw the lines between them
     DrawMesh(instance: MeshInstance) {
         this.diagnostics.objectDrawCalls += 1;
@@ -373,5 +378,6 @@ export default class WireframeRenderer {
 
         this.diagnostics.End();
     }
+
+    //endregion
 }
-//endregion

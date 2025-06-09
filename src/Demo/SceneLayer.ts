@@ -32,7 +32,8 @@ export default class SceneLayer {
     }
 
     public GetLocation() {
-        return Vec3.GetRndLocation(this.radius)
+        let size = this.radius * 2;
+        return new Vec3(Math.random() * size - this.radius, 0, Math.random() * size - this.radius);
     }
 
     public LockToCamera(camera: Camera){
@@ -45,19 +46,19 @@ export default class SceneLayer {
             let obj = this.items[i];
             let pos = obj.location;
             
-            if (pos.x > -cpos.x + radius) {
+            if (pos.x > cpos.x + radius) {
                 pos.x -= size;
             }
     
-            if (pos.x < -cpos.x - radius) {
+            if (pos.x < cpos.x - radius) {
                 pos.x += size;
             }
     
-            if (pos.z > -cpos.z + radius) {
+            if (pos.z > cpos.z + radius) {
                 pos.z -= size;
             }
     
-            if (pos.z < -cpos.z - radius) {
+            if (pos.z < cpos.z - radius) {
                 pos.z += size;
             }
         }

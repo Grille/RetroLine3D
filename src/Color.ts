@@ -12,10 +12,16 @@ export default class Color {
         return new Color(this.r, this.g, this.b);
     }
 
+    public static Set(out: Color, color1: Color) {
+        out.r = color1.r;
+        out.g = color1.g;
+        out.b = color1.b;
+    }
+
     public static Mix(out: Color, color1: Color, color2: Color, factor: number) {
         let nfactor = 1 - factor;
-        out.r = color1.r * nfactor + color2.r * factor
-        out.g = color1.g * nfactor + color2.g * factor
-        out.b = color1.b * nfactor + color2.b * factor
+        out.r = color1.r * nfactor + color2.r * factor;
+        out.g = color1.g * nfactor + color2.g * factor;
+        out.b = color1.b * nfactor + color2.b * factor;
     }
 }
